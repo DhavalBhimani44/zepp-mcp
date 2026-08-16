@@ -51,6 +51,20 @@ uv run tools/smoke_test.py  # server starts and lists its tools
 uv run tools/check_fixtures.py
 ```
 
+Install the pre-push hook. It refuses to push a branch holding
+pre-anonymisation history, runs the privacy gate, and checks that no
+credential file is tracked:
+
+```bash
+ln -sf ../../tools/hooks/pre-push .git/hooks/pre-push
+```
+
+> [!IMPORTANT]
+> Force pushes are blocked on the default branch, so a bad push **cannot be
+> rewritten away**. The usual remediation — rewrite history, force push over
+> it — is unavailable. Anything that lands is permanent short of deleting the
+> repository. That is why the check runs before the push rather than after.
+
 Everything above works without a Zepp account. You only need credentials to
 test against live data:
 

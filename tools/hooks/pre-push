@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# Refuse to push anything that would put personal data on a public remote.
+#
+# This matters more than a normal pre-push hook because the repository blocks
+# force pushes on the default branch. The usual remediation for a bad push --
+# rewrite history, force push over it -- is unavailable. Anything that lands
+# is permanent short of disabling the rule or deleting the repository.
+#
+# So the check has to happen before the push, not after.
+#
+# Install:
+#   ln -sf ../../tools/hooks/pre-push .git/hooks/pre-push
+#
+# Bypass, when you are certain and have read the output:
+#   git push --no-verify
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+red() { printf '\033[31m%s\033[0m\n' "$1"; }
+
+fail() {
+    red "PUSH BLOCKED: $1"
+    echo
+    echo "Force pushes are blocked on the default branch, so a bad push"
+    echo "cannot be rewritten away. Fix this before pushing."
+    exit 1
+}
+
+# 1. Never push a branch holding pre-sanitisation history.
+while read -r local_ref _ remote_ref _; do
+    [ -z "${local_ref:-}" ] && continue
+    case "$local_ref" in
+        *archive/*|*pre-oss*|*DO-NOT-PUSH*)
+            fail "'$local_ref' holds history from before the corpus was
+       anonymised. It contains a date of birth, a MAC address and a
+       device serial. It must never reach a public remote."
+            ;;
+    esac
+    case "$remote_ref" in
+        *archive/*|*pre-oss*|*DO-NOT-PUSH*)
+            fail "refusing to create remote branch '$remote_ref'."
+            ;;
+    esac
+done
+
+# 2. The fixture corpus must pass the privacy gate.
+if [ -f "$repo_root/tools/check_fixtures.py" ]; then
+    if ! output=$(cd "$repo_root" && uv run tools/check_fixtures.py 2>&1); then
+        echo "$output"
+        fail "the fixture corpus did not pass the privacy check."
+    fi
+    echo "pre-push: $output"
+fi
+
+# 3. Credentials must not be tracked.
+for path in .env spike/.env tools/identities.local.json; do
+    if git ls-files --error-unmatch "$path" >/dev/null 2>&1; then
+        fail "'$path' is tracked by git. It holds credentials or personal
+       identifiers and must stay ignored."
+    fi
+done
+
+echo "pre-push: checks passed"

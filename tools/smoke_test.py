@@ -11,17 +11,27 @@ rejects, an import error at module scope. This catches that class.
 No credentials and no network: the server registers its tools at import time
 and answers tools/list without ever contacting Zepp.
 
+Sends one request at a time and waits for its response before sending the
+next. An earlier version wrote all three messages up front and closed stdin,
+which raced: the server could reach end-of-input and shut down before
+answering tools/list. That produced a CI failure on one Python version and a
+pass on the others from identical code -- the worst kind of check, because it
+looks like a real incompatibility.
+
 Run:  uv run tools/smoke_test.py
 """
 
 from __future__ import annotations
 
 import json
+import queue
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+TIMEOUT_SECONDS = 60
 
 EXPECTED_TOOLS = {
     "zepp_auth_status",
@@ -34,64 +44,94 @@ EXPECTED_TOOLS = {
     "zepp_workout_detail",
 }
 
-REQUESTS = [
-    {"jsonrpc": "2.0", "id": 1, "method": "initialize",
-     "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                "clientInfo": {"name": "smoke-test", "version": "1"}}},
-    {"jsonrpc": "2.0", "method": "notifications/initialized"},
-    {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
-]
+
+def _reader(stream, sink: queue.Queue) -> None:
+    for line in stream:
+        sink.put(line)
+    sink.put(None)
 
 
-def main() -> int:
-    payload = "".join(json.dumps(message) + "\n" for message in REQUESTS)
-    try:
-        process = subprocess.run(
-            [sys.executable, "-m", "zepp_mcp.server"],
-            input=payload, capture_output=True, text=True, timeout=90, cwd=ROOT,
-        )
-    except subprocess.TimeoutExpired:
-        print("FAILED: server did not exit after its input stream closed",
-              file=sys.stderr)
-        return 1
-
-    responses = {}
-    for line in process.stdout.splitlines():
+def _await_response(sink: queue.Queue, request_id: int) -> dict | None:
+    """Read lines until the response with this id arrives, or time out."""
+    while True:
+        try:
+            line = sink.get(timeout=TIMEOUT_SECONDS)
+        except queue.Empty:
+            return None
+        if line is None:  # stdout closed
+            return None
         line = line.strip()
         if not line:
             continue
         try:
             message = json.loads(line)
         except ValueError:
-            continue
-        if "id" in message:
-            responses[message["id"]] = message
+            continue  # not JSON-RPC; ignore
+        if message.get("id") == request_id:
+            return message
 
-    if 1 not in responses:
-        print("FAILED: no response to initialize", file=sys.stderr)
-        print(process.stderr[:2000], file=sys.stderr)
+
+def main() -> int:
+    process = subprocess.Popen(
+        [sys.executable, "-m", "zepp_mcp.server"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, bufsize=1, cwd=ROOT,
+    )
+    sink: queue.Queue = queue.Queue()
+    threading.Thread(target=_reader, args=(process.stdout, sink),
+                     daemon=True).start()
+
+    def send(message: dict) -> None:
+        process.stdin.write(json.dumps(message) + "\n")
+        process.stdin.flush()
+
+    def bail(reason: str) -> int:
+        print(f"FAILED: {reason}", file=sys.stderr)
+        process.kill()
+        stderr = process.stderr.read() if process.stderr else ""
+        if stderr.strip():
+            print(stderr[:2000], file=sys.stderr)
         return 1
 
-    server_info = responses[1].get("result", {}).get("serverInfo", {})
-    print(f"initialize -> {server_info.get('name')} {server_info.get('version')}")
+    try:
+        send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+              "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                         "clientInfo": {"name": "smoke-test", "version": "1"}}})
+        response = _await_response(sink, 1)
+        if response is None:
+            return bail("no response to initialize")
+        info = response.get("result", {}).get("serverInfo", {})
+        print(f"initialize -> {info.get('name')} {info.get('version')}")
 
-    if 2 not in responses:
-        print("FAILED: no response to tools/list", file=sys.stderr)
-        print(process.stderr[:2000], file=sys.stderr)
-        return 1
+        send({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
-    listed = {tool["name"] for tool in responses[2]["result"]["tools"]}
-    print(f"tools/list -> {len(listed)} tools")
+        send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+        response = _await_response(sink, 2)
+        if response is None:
+            return bail("no response to tools/list")
 
-    missing = EXPECTED_TOOLS - listed
-    extra = listed - EXPECTED_TOOLS
-    if missing:
-        print(f"FAILED: missing tools: {sorted(missing)}", file=sys.stderr)
-    if extra:
-        print(f"NOTE: undeclared tools present: {sorted(extra)}. Add them to "
-              f"EXPECTED_TOOLS and to the README table.", file=sys.stderr)
-    if missing or extra:
-        return 1
+        listed = {tool["name"] for tool in response["result"]["tools"]}
+        print(f"tools/list -> {len(listed)} tools")
+
+        missing = EXPECTED_TOOLS - listed
+        extra = listed - EXPECTED_TOOLS
+        if missing:
+            return bail(f"missing tools: {sorted(missing)}")
+        if extra:
+            return bail(
+                f"undeclared tools present: {sorted(extra)}. Add them to "
+                f"EXPECTED_TOOLS and to the README table."
+            )
+    finally:
+        if process.poll() is None:
+            try:
+                process.stdin.close()
+            except OSError:
+                pass
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
 
     print("smoke test passed")
     return 0

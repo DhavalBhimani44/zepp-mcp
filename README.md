@@ -60,9 +60,60 @@ real captured responses.
 - **Nothing stored.** No health data touches disk. Only the API token is
   cached, so restarts don't trigger a fresh login.
 
-## Quick start
+## Setup for Users
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.11+.
+If you just want to use the server with your MCP client, you don't need to clone the repository. You can run it directly using `uvx` (the [uv](https://docs.astral.sh/uv/) tool runner).
+
+<details open>
+<summary><b>Claude Desktop</b></summary>
+
+Add the server to your `claude_desktop_config.json` and pass your credentials securely via environment variables:
+
+```json
+{
+  "mcpServers": {
+    "zepp": {
+      "command": "uvx",
+      "args": ["zepp-mcp"],
+      "env": {
+        "ZEPP_EMAIL": "your-email@example.com",
+        "ZEPP_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+- **macOS** · `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows** · `%APPDATA%\Claude\claude_desktop_config.json`
+
+Restart the app completely afterwards.
+
+</details>
+
+<details>
+<summary><b>Claude Code</b></summary>
+
+Install the server globally for Claude Code. Make sure to pass your credentials securely as environment variables:
+
+```bash
+export ZEPP_EMAIL="your-email@example.com"
+export ZEPP_PASSWORD="your-password"
+claude mcp add zepp -s user -- uvx zepp-mcp
+```
+
+`-s user` makes it available in every project. Verify with `claude mcp list`.
+
+</details>
+
+> [!WARNING]
+> Zepp counts failed logins against a **shared 10-attempt lockout**. This
+> server never retries a failed login, and you shouldn't either. If
+> authentication fails, check your credentials carefully before trying again.
+
+## Developer Setup
+
+If you want to contribute, run tests, or modify the code locally. Requires [uv](https://docs.astral.sh/uv/) and Python 3.11+.
 
 ```bash
 git clone https://github.com/DhavalBhimani44/zepp-mcp.git
@@ -86,31 +137,12 @@ Then check your account connects:
 uv run python -c "from zepp_mcp.server import zepp_auth_status; print(zepp_auth_status())"
 ```
 
-> [!WARNING]
-> Zepp counts failed logins against a **shared 10-attempt lockout**. This
-> server never retries a failed login, and you shouldn't either. If
-> authentication fails, fix the credentials before trying again.
+### Connecting a local clone
 
-## Connecting a client
-
-You never start the server yourself. Your MCP client launches it on demand
-over stdio and shuts it down when it exits.
-
-<details open>
-<summary><b>Claude Code</b></summary>
-
-```bash
-claude mcp add zepp -s user -- uv --directory /path/to/zepp-mcp run zepp-mcp
-```
-
-`-s user` makes it available in every project. Verify with `claude mcp list`.
-
-</details>
+If you're testing your local clone, configure your client to use the local directory instead of `uvx`.
 
 <details>
 <summary><b>Claude Desktop</b></summary>
-
-Add to `claude_desktop_config.json`:
 
 ```json
 {
@@ -122,19 +154,16 @@ Add to `claude_desktop_config.json`:
   }
 }
 ```
-
-- macOS · `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows · `%APPDATA%\Claude\claude_desktop_config.json`
-
-Restart the app completely afterwards.
+*(Credentials are read from your local `.env`, so they stay out of the config file)*
 
 </details>
 
 <details>
-<summary><b>Any other MCP client</b></summary>
+<summary><b>Claude Code</b></summary>
 
-Run `uv --directory /path/to/zepp-mcp run zepp-mcp` as a stdio server.
-Credentials are read from `.env`, so they stay out of client config files.
+```bash
+claude mcp add zepp-local -s user -- uv --directory /path/to/zepp-mcp run zepp-mcp
+```
 
 </details>
 
@@ -166,7 +195,14 @@ This is health data. The design reflects that.
   credential-shaped token. GPS-bearing workouts are excluded entirely — a
   running route starts where you live.
 
-If you contribute a fixture, run `uv run tools/anonymize_fixtures.py` first.
+If you contribute a fixture, run `uv run tools/anonymize_fixtures.py` first,
+and install the pre-push hook — force pushes are blocked on `main`, so a bad
+push cannot be rewritten away:
+
+```bash
+ln -sf ../../tools/hooks/pre-push .git/hooks/pre-push
+```
+
 See [CONTRIBUTING.md](CONTRIBUTING.md#adding-fixtures).
 
 ## How it works
