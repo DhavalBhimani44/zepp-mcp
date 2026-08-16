@@ -1,0 +1,16 @@
+{
+  "seq": 0,
+  "name": "login_step1_api-user.zepp.com_us-west-2_US",
+  "method": "POST",
+  "url": "https://api-user.zepp.com/v2/registrations/tokens",
+  "params": {
+    "region": "us-west-2",
+    "country_code": "US",
+    "location": "<location>"
+  },
+  "status": 303,
+  "elapsed_ms": 1293,
+  "body_bytes": 0,
+  "empty_200": false,
+  "body_parsed": null
+}

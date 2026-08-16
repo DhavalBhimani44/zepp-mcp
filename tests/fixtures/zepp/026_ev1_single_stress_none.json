@@ -1,0 +1,33 @@
+{
+  "seq": 26,
+  "name": "ev1_single_stress_none",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+  "params": {
+    "from": "1784140200000",
+    "to": "1786732200000",
+    "eventType": "single_stress",
+    "limit": 20,
+    "reverse": "false"
+  },
+  "status": 200,
+  "elapsed_ms": 291,
+  "body_bytes": 256,
+  "empty_200": false,
+  "body_parsed": {
+    "items": [
+      {
+        "userId": "<userId>",
+        "eventType": "single_stress",
+        "subType": "single_stress",
+        "timestamp": 1786086698000,
+        "deviceType": "0",
+        "deviceSource": "12345678",
+        "deviceMac": "AABBCC001122",
+        "deviceSn": "00000000000000",
+        "deviceId": "AABBCCFFFE001122",
+        "value": "54"
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "generated_from": "spike/probe.py",
+  "promoted": 45,
+  "excluded_for_gps": [
+    "044_workout_detail_type22_1786267428.json",
+    "045_workout_detail_type1_1786191738.json",
+    "046_workout_detail_longest_1786258281.json"
+  ],
+  "note": "Re-scrubbed through Redactor at promotion time. Captures carrying GPS streams are excluded; a synthetic track is needed to test the GPS decoder."
+}

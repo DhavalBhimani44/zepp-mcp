@@ -1,0 +1,273 @@
+{
+  "seq": 31,
+  "name": "ev2_DailyHealth_summary",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/v2/users/me/events",
+  "params": {
+    "from": "1784140200000",
+    "to": "1786732200000",
+    "eventType": "DailyHealth",
+    "subType": "summary",
+    "limit": 20
+  },
+  "status": 200,
+  "elapsed_ms": 356,
+  "body_bytes": 4125,
+  "empty_200": false,
+  "body_parsed": {
+    "items": [
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1784505600000,
+        "value": {
+          "samples": [
+            {
+              "totalBurningDuration": 0,
+              "burningDurationGoal": 30,
+              "totalCalories": 0,
+              "s": 0,
+              "dateString": "2026-07-20",
+              "calorieGoal": 300,
+              "totalRunningDistance": 0,
+              "totalSteps": 0,
+              "totalCyclingDistance": 0,
+              "stepGoal": 8000
+            }
+          ],
+          "deviceId": "1,",
+          "deviceSN": "1,",
+          "deviceType": "1,-1",
+          "timeZone": "1,Asia/Shanghai",
+          "startTime": 1784505600000,
+          "deviceSource": "1,-1"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786060800000,
+        "value": {
+          "deviceSN": "1,",
+          "timeZone": "1,Asia/Shanghai",
+          "startTime": 1786060800000,
+          "deviceType": "1,-1",
+          "samples": [
+            {
+              "stepGoal": 10000,
+              "dateString": "2026-08-07",
+              "totalSteps": 3787,
+              "totalCalories": 164,
+              "burningDurationGoal": 30,
+              "totalRunningDistance": 0,
+              "totalBurningDuration": 4,
+              "totalCyclingDistance": 0,
+              "s": 0,
+              "calorieGoal": 300
+            }
+          ],
+          "deviceId": "1,",
+          "deviceSource": "1,-1"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786147200000,
+        "value": {
+          "startTime": 1786147200000,
+          "deviceSN": "1,",
+          "samples": [
+            {
+              "calorieGoal": 300,
+              "burningDurationGoal": 30,
+              "s": 0,
+              "totalBurningDuration": 24,
+              "totalCyclingDistance": 0,
+              "stepGoal": 10000,
+              "totalSteps": 7503,
+              "totalRunningDistance": 3363.283447265625,
+              "dateString": "2026-08-08",
+              "totalCalories": 468
+            }
+          ],
+          "deviceSource": "1,-1",
+          "deviceType": "1,-1",
+          "timeZone": "1,Asia/Shanghai",
+          "deviceId": "1,"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786233600000,
+        "value": {
+          "deviceId": "1,",
+          "timeZone": "1,Asia/Shanghai",
+          "samples": [
+            {
+              "stepGoal": 10000,
+              "calorieGoal": 300,
+              "totalBurningDuration": 172,
+              "totalRunningDistance": 0,
+              "burningDurationGoal": 30,
+              "totalCalories": 2638,
+              "totalSteps": 13371,
+              "totalCyclingDistance": 0,
+              "dateString": "2026-08-09",
+              "s": 0
+            }
+          ],
+          "deviceSN": "1,",
+          "deviceType": "1,-1",
+          "startTime": 1786233600000,
+          "deviceSource": "1,-1"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786320000000,
+        "value": {
+          "deviceId": "1,",
+          "samples": [
+            {
+              "calorieGoal": 300,
+              "stepGoal": 10000,
+              "totalSteps": 9119,
+              "s": 0,
+              "totalCalories": 375,
+              "totalCyclingDistance": 0,
+              "totalRunningDistance": 0,
+              "totalBurningDuration": 0,
+              "burningDurationGoal": 30,
+              "dateString": "2026-08-10"
+            }
+          ],
+          "deviceType": "1,-1",
+          "deviceSN": "1,",
+          "timeZone": "1,Asia/Shanghai",
+          "startTime": 1786320000000,
+          "deviceSource": "1,-1"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786406400000,
+        "value": {
+          "deviceType": "1,-1",
+          "deviceId": "1,",
+          "deviceSN": "1,",
+          "deviceSource": "1,-1",
+          "startTime": 1786406400000,
+          "timeZone": "1,Asia/Shanghai",
+          "samples": [
+            {
+              "totalBurningDuration": 14,
+              "dateString": "2026-08-11",
+              "totalRunningDistance": 0,
+              "totalSteps": 5467,
+              "calorieGoal": 300,
+              "s": 0,
+              "totalCyclingDistance": 0,
+              "stepGoal": 10000,
+              "burningDurationGoal": 30,
+              "totalCalories": 245
+            }
+          ]
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786492800000,
+        "value": {
+          "deviceType": "1,-1",
+          "samples": [
+            {
+              "burningDurationGoal": 30,
+              "totalRunningDistance": 0,
+              "totalCalories": 447,
+              "totalSteps": 11993,
+              "stepGoal": 10000,
+              "dateString": "2026-08-12",
+              "s": 0,
+              "totalBurningDuration": 18,
+              "totalCyclingDistance": 0,
+              "calorieGoal": 300
+            }
+          ],
+          "timeZone": "1,Asia/Shanghai",
+          "startTime": 1786492800000,
+          "deviceSN": "1,",
+          "deviceId": "1,",
+          "deviceSource": "1,-1"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786579200000,
+        "value": {
+          "deviceSource": "1,-1",
+          "deviceType": "1,-1",
+          "samples": [
+            {
+              "burningDurationGoal": 30,
+              "totalCalories": 634,
+              "totalSteps": 5976,
+              "totalBurningDuration": 21,
+              "calorieGoal": 300,
+              "s": 0,
+              "totalRunningDistance": 1064.375,
+              "stepGoal": 10000,
+              "totalCyclingDistance": 0,
+              "dateString": "2026-08-13"
+            }
+          ],
+          "timeZone": "1,Asia/Shanghai",
+          "deviceSN": "1,",
+          "deviceId": "1,",
+          "startTime": 1786579200000
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "DailyHealth",
+        "subType": "summary",
+        "timestamp": 1786665600000,
+        "value": {
+          "startTime": 1786665600000,
+          "samples": [
+            {
+              "totalSteps": 4545,
+              "stepGoal": 10000,
+              "burningDurationGoal": 30,
+              "totalCyclingDistance": 0,
+              "calorieGoal": 300,
+              "s": 0,
+              "totalBurningDuration": 50,
+              "totalCalories": 1077,
+              "dateString": "2026-08-14",
+              "totalRunningDistance": 0
+            }
+          ],
+          "deviceSN": "1,",
+          "deviceSource": "1,-1",
+          "deviceId": "1,",
+          "deviceType": "1,-1",
+          "timeZone": "1,Asia/Shanghai"
+        }
+      }
+    ]
+  }
+}

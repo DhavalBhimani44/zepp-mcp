@@ -1,0 +1,18 @@
+{
+  "seq": 19,
+  "name": "heart_rate",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/users/<user_id>/heartRate",
+  "params": null,
+  "status": 400,
+  "elapsed_ms": 278,
+  "body_bytes": 130,
+  "empty_200": false,
+  "body_parsed": {
+    "timestamp": "2026-08-15T08:36:57.048+00:00",
+    "status": 400,
+    "error": "Bad Request",
+    "message": "",
+    "path": "/users/<user_id>/heartRate"
+  }
+}

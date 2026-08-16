@@ -1,0 +1,885 @@
+{
+  "seq": 22,
+  "name": "second_hr_index",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/users/me/fileInfo/events",
+  "params": {
+    "eventType": "second_heart_rate",
+    "subType": "real_data",
+    "from": "1784140200000",
+    "to": "1786732200000",
+    "limit": 50
+  },
+  "status": 200,
+  "elapsed_ms": 366,
+  "body_bytes": 12166,
+  "empty_200": false,
+  "body_parsed": {
+    "items": [
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786060800000,
+        "value": {
+          "timeZone": "11,Asia/Calcutta",
+          "deviceSource": "11,12345678",
+          "deviceSN": "11,",
+          "deviceType": "11,-1",
+          "samples": [
+            {
+              "s": 0,
+              "u": 435563,
+              "fileType": "SEC_HR",
+              "e": 353000,
+              "dateString": "2026-08-07",
+              "fileId": "8073947258"
+            },
+            {
+              "e": 958000,
+              "u": 2583488,
+              "fileId": "8073947258",
+              "s": 888000,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-07"
+            },
+            {
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-07",
+              "u": 6322613,
+              "s": 4298000,
+              "fileId": "8073947258",
+              "e": 4302000
+            },
+            {
+              "fileType": "SEC_HR",
+              "s": 6573000,
+              "e": 6711000,
+              "dateString": "2026-08-07",
+              "u": 6713569,
+              "fileId": "8073947258"
+            },
+            {
+              "fileId": "8073947258",
+              "fileType": "SEC_HR",
+              "e": 6812000,
+              "dateString": "2026-08-07",
+              "u": 6864621,
+              "s": 6712000
+            },
+            {
+              "s": 23400000,
+              "e": 26255000,
+              "fileId": "8073947258",
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-07",
+              "u": 26281468
+            },
+            {
+              "e": 29495000,
+              "u": 29987538,
+              "s": 26520000,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-07",
+              "fileId": "8073947258"
+            },
+            {
+              "u": 35379193,
+              "fileId": "8073947258",
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-07",
+              "e": 31955000,
+              "s": 30780000
+            },
+            {
+              "e": 35855000,
+              "u": 40736966,
+              "fileId": "8073947258",
+              "s": 35401000,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-07"
+            },
+            {
+              "u": 46130912,
+              "e": 42935000,
+              "fileId": "8073947258",
+              "s": 40799000,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-07"
+            },
+            {
+              "dateString": "2026-08-08",
+              "fileId": "8073947258",
+              "e": 44495000,
+              "fileType": "SEC_HR",
+              "s": 42936000,
+              "u": 46130911
+            }
+          ],
+          "deviceId": "11,AABBCCFFFE001122",
+          "startTime": 1786084464000
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786147200000,
+        "value": {
+          "samples": [
+            {
+              "fileType": "SEC_HR",
+              "s": 0,
+              "fileId": "8074441314",
+              "e": 274000,
+              "u": 521319,
+              "dateString": "2026-08-08"
+            },
+            {
+              "s": 12539000,
+              "u": 12740542,
+              "dateString": "2026-08-08",
+              "fileType": "SEC_HR",
+              "fileId": "8074441314",
+              "e": 12737000
+            },
+            {
+              "u": 14483312,
+              "e": 13993000,
+              "dateString": "2026-08-08",
+              "s": 12738000,
+              "fileType": "SEC_HR",
+              "fileId": "8074441314"
+            },
+            {
+              "u": 20223324,
+              "s": 13993000,
+              "fileId": "8074441314",
+              "dateString": "2026-08-08",
+              "fileType": "SEC_HR",
+              "e": 14974000
+            },
+            {
+              "dateString": "2026-08-08",
+              "fileId": "8074441314",
+              "e": 29496000,
+              "fileType": "SEC_HR",
+              "s": 24718000,
+              "u": 29499319
+            },
+            {
+              "u": 30705507,
+              "fileId": "8074441314",
+              "dateString": "2026-08-08",
+              "fileType": "SEC_HR",
+              "s": 29497000,
+              "e": 30703000
+            },
+            {
+              "fileType": "SEC_HR",
+              "fileId": "8074441314",
+              "u": 30839699,
+              "e": 30825000,
+              "s": 30704000,
+              "dateString": "2026-08-08"
+            },
+            {
+              "fileId": "8074441314",
+              "dateString": "2026-08-08",
+              "u": 38513251,
+              "fileType": "SEC_HR",
+              "s": 30848000,
+              "e": 38374000
+            },
+            {
+              "fileId": "8074441314",
+              "s": 43139000,
+              "fileType": "SEC_HR",
+              "u": 47937652,
+              "e": 47194000,
+              "dateString": "2026-08-08"
+            },
+            {
+              "dateString": "2026-08-09",
+              "fileType": "SEC_HR",
+              "e": 54994000,
+              "u": 59427874,
+              "fileId": "8074441314",
+              "s": 51599000
+            }
+          ],
+          "deviceId": "10,AABBCCFFFE001122",
+          "deviceSN": "10,",
+          "timeZone": "10,Asia/Calcutta",
+          "startTime": 1786162285000,
+          "deviceType": "10,-1",
+          "deviceSource": "10,12345678"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786233600000,
+        "value": {
+          "samples": [
+            {
+              "fileId": "8074689795",
+              "e": 2011000,
+              "s": 0,
+              "dateString": "2026-08-09",
+              "u": 2013669,
+              "fileType": "SEC_HR"
+            },
+            {
+              "s": 2012000,
+              "u": 5731995,
+              "e": 4176000,
+              "fileId": "8074689795",
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-09"
+            },
+            {
+              "dateString": "2026-08-09",
+              "s": 11281000,
+              "e": 14672000,
+              "fileType": "SEC_HR",
+              "u": 14675003,
+              "fileId": "8074689795"
+            },
+            {
+              "s": 14673000,
+              "fileType": "SEC_HR",
+              "e": 18582000,
+              "u": 18585230,
+              "fileId": "8074689795",
+              "dateString": "2026-08-09"
+            },
+            {
+              "u": 21041012,
+              "fileId": "8074689795",
+              "e": 21039000,
+              "s": 18583000,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-09"
+            },
+            {
+              "fileId": "8074689795",
+              "e": 21166000,
+              "u": 21181661,
+              "fileType": "SEC_HR",
+              "s": 21040000,
+              "dateString": "2026-08-09"
+            },
+            {
+              "dateString": "2026-08-09",
+              "e": 25525000,
+              "fileType": "SEC_HR",
+              "u": 25526767,
+              "s": 21865000,
+              "fileId": "8074689795"
+            },
+            {
+              "dateString": "2026-08-09",
+              "fileType": "SEC_HR",
+              "e": 26778000,
+              "u": 26780939,
+              "s": 25526000,
+              "fileId": "8074689795"
+            },
+            {
+              "fileType": "SEC_HR",
+              "e": 26929000,
+              "fileId": "8074689795",
+              "dateString": "2026-08-09",
+              "s": 26780000,
+              "u": 26942524
+            },
+            {
+              "fileId": "8074689795",
+              "u": 31597731,
+              "s": 26952000,
+              "fileType": "SEC_HR",
+              "e": 27576000,
+              "dateString": "2026-08-09"
+            },
+            {
+              "u": 36604959,
+              "fileType": "SEC_HR",
+              "e": 36576000,
+              "fileId": "8074689795",
+              "dateString": "2026-08-09",
+              "s": 36121000
+            },
+            {
+              "dateString": "2026-08-09",
+              "s": 38881000,
+              "fileId": "8074689795",
+              "fileType": "SEC_HR",
+              "e": 41811000,
+              "u": 41813924
+            },
+            {
+              "s": 41812000,
+              "e": 47019000,
+              "u": 47021129,
+              "fileId": "8074689795",
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-09"
+            },
+            {
+              "e": 48963000,
+              "u": 51507728,
+              "fileId": "8074689795",
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-09",
+              "s": 47020000
+            }
+          ],
+          "deviceSN": "14,",
+          "deviceSource": "14,12345678",
+          "deviceType": "14,-1",
+          "deviceId": "14,AABBCCFFFE001122",
+          "startTime": 1786245563000,
+          "timeZone": "14,Asia/Calcutta"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786320000000,
+        "value": {
+          "deviceId": "16,AABBCCFFFE001122",
+          "deviceSN": "16,",
+          "deviceSource": "16,12345678",
+          "timeZone": "16,Asia/Calcutta",
+          "samples": [
+            {
+              "u": 4721251,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-10",
+              "s": 0,
+              "e": 995000,
+              "fileId": "8075192626"
+            },
+            {
+              "fileType": "SEC_HR",
+              "s": 5639000,
+              "e": 8735000,
+              "dateString": "2026-08-10",
+              "u": 10385960,
+              "fileId": "8075192626"
+            },
+            {
+              "s": 11639000,
+              "fileId": "8075192626",
+              "e": 13715000,
+              "u": 14088088,
+              "dateString": "2026-08-10",
+              "fileType": "SEC_HR"
+            },
+            {
+              "fileType": "SEC_HR",
+              "fileId": "8075192626",
+              "e": 17195000,
+              "s": 14399000,
+              "u": 17884988,
+              "dateString": "2026-08-10"
+            },
+            {
+              "u": 21729158,
+              "fileId": "8075192626",
+              "fileType": "SEC_HR",
+              "s": 18600000,
+              "e": 21726000,
+              "dateString": "2026-08-10"
+            },
+            {
+              "e": 21815000,
+              "u": 25678007,
+              "dateString": "2026-08-10",
+              "s": 21728000,
+              "fileType": "SEC_HR",
+              "fileId": "8075192626"
+            },
+            {
+              "fileId": "8075192626",
+              "dateString": "2026-08-10",
+              "u": 29909486,
+              "s": 25680000,
+              "e": 29906000,
+              "fileType": "SEC_HR"
+            },
+            {
+              "s": 29907000,
+              "u": 33596449,
+              "dateString": "2026-08-10",
+              "fileType": "SEC_HR",
+              "fileId": "8075192626",
+              "e": 32195000
+            },
+            {
+              "s": 35820000,
+              "u": 37400717,
+              "fileType": "SEC_HR",
+              "e": 36695000,
+              "fileId": "8075192626",
+              "dateString": "2026-08-10"
+            },
+            {
+              "fileType": "SEC_HR",
+              "s": 40739000,
+              "u": 42077889,
+              "fileId": "8075192626",
+              "e": 41735000,
+              "dateString": "2026-08-10"
+            },
+            {
+              "u": 49252817,
+              "s": 42120000,
+              "dateString": "2026-08-10",
+              "e": 49250000,
+              "fileType": "SEC_HR",
+              "fileId": "8075192626"
+            },
+            {
+              "e": 51455000,
+              "fileType": "SEC_HR",
+              "u": 54654273,
+              "s": 49251000,
+              "fileId": "8075192626",
+              "dateString": "2026-08-10"
+            },
+            {
+              "u": 60056176,
+              "e": 57395000,
+              "fileId": "8075192626",
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-10",
+              "s": 57120000
+            },
+            {
+              "u": 66203406,
+              "s": 63169000,
+              "dateString": "2026-08-11",
+              "e": 63455000,
+              "fileType": "SEC_HR",
+              "fileId": "8075192626"
+            },
+            {
+              "e": 70038000,
+              "u": 70040564,
+              "fileId": "8075192626",
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-11",
+              "s": 66780000
+            },
+            {
+              "s": 70039000,
+              "u": 74458493,
+              "dateString": "2026-08-11",
+              "fileType": "SEC_HR",
+              "e": 70295000,
+              "fileId": "8075192626"
+            }
+          ],
+          "startTime": 1786327944000,
+          "deviceType": "16,-1"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786406400000,
+        "value": {
+          "deviceSN": "9,",
+          "deviceSource": "9,12345678",
+          "startTime": 1786437324000,
+          "timeZone": "9,Asia/Calcutta",
+          "deviceId": "9,AABBCCFFFE001122",
+          "deviceType": "9,-1",
+          "samples": [
+            {
+              "u": 3833026,
+              "fileId": "8075689822",
+              "e": 3653000,
+              "dateString": "2026-08-11",
+              "fileType": "SEC_HR",
+              "s": 0
+            },
+            {
+              "s": 12024000,
+              "fileType": "SEC_HR",
+              "e": 12088000,
+              "dateString": "2026-08-11",
+              "fileId": "8075689822",
+              "u": 12154536
+            },
+            {
+              "e": 14188000,
+              "s": 13587000,
+              "u": 14224163,
+              "dateString": "2026-08-11",
+              "fileId": "8075689822",
+              "fileType": "SEC_HR"
+            },
+            {
+              "e": 15332000,
+              "dateString": "2026-08-11",
+              "fileId": "8075689822",
+              "fileType": "SEC_HR",
+              "u": 15334487,
+              "s": 14279000
+            },
+            {
+              "u": 19335297,
+              "s": 15333000,
+              "fileId": "8075689822",
+              "fileType": "SEC_HR",
+              "e": 19333000,
+              "dateString": "2026-08-11"
+            },
+            {
+              "e": 21455000,
+              "u": 23306741,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-11",
+              "fileId": "8075689822",
+              "s": 19334000
+            },
+            {
+              "s": 23520000,
+              "u": 27328654,
+              "fileId": "8075689822",
+              "e": 25535000,
+              "dateString": "2026-08-11",
+              "fileType": "SEC_HR"
+            },
+            {
+              "fileType": "SEC_HR",
+              "s": 30539000,
+              "dateString": "2026-08-11",
+              "e": 35675000,
+              "u": 73185446,
+              "fileId": "8075689822"
+            },
+            {
+              "e": 42275000,
+              "s": 35677000,
+              "fileId": "8075689822",
+              "dateString": "2026-08-12",
+              "fileType": "SEC_HR",
+              "u": 73185446
+            }
+          ]
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786492800000,
+        "value": {
+          "startTime": 1786512264000,
+          "deviceSN": "2,",
+          "timeZone": "2,Asia/Calcutta",
+          "samples": [
+            {
+              "fileType": "SEC_HR",
+              "fileId": "8076135507",
+              "s": 0,
+              "dateString": "2026-08-12",
+              "u": 2763113,
+              "e": 1355000
+            },
+            {
+              "dateString": "2026-08-12",
+              "fileType": "SEC_HR",
+              "e": 42995000,
+              "u": 48574678,
+              "s": 3702000,
+              "fileId": "8076135507"
+            }
+          ],
+          "deviceId": "2,AABBCCFFFE001122",
+          "deviceSource": "2,12345678",
+          "deviceType": "2,-1"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786579200000,
+        "value": {
+          "deviceType": "16,-1",
+          "timeZone": "16,Asia/Calcutta",
+          "deviceSource": "16,12345678",
+          "startTime": 1786581426000,
+          "samples": [
+            {
+              "u": 1387390,
+              "s": 0,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-13",
+              "fileId": "8076263565",
+              "e": 293000
+            },
+            {
+              "u": 16358482,
+              "fileType": "SEC_HR",
+              "fileId": "8076263565",
+              "dateString": "2026-08-13",
+              "s": 8419000,
+              "e": 16356000
+            },
+            {
+              "u": 17133306,
+              "dateString": "2026-08-13",
+              "e": 16613000,
+              "s": 16357000,
+              "fileType": "SEC_HR",
+              "fileId": "8076263565"
+            },
+            {
+              "e": 29522000,
+              "dateString": "2026-08-13",
+              "u": 29525114,
+              "s": 27919000,
+              "fileId": "8076263565",
+              "fileType": "SEC_HR"
+            },
+            {
+              "dateString": "2026-08-13",
+              "e": 29873000,
+              "u": 38192685,
+              "s": 29523000,
+              "fileType": "SEC_HR",
+              "fileId": "8076263565"
+            },
+            {
+              "s": 43038000,
+              "e": 43159000,
+              "fileId": "8076263565",
+              "u": 43161097,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-13"
+            },
+            {
+              "e": 43313000,
+              "s": 43160000,
+              "fileId": "8076263565",
+              "fileType": "SEC_HR",
+              "u": 44312829,
+              "dateString": "2026-08-13"
+            },
+            {
+              "u": 46893048,
+              "e": 46890000,
+              "fileType": "SEC_HR",
+              "fileId": "8076263565",
+              "s": 44418000,
+              "dateString": "2026-08-13"
+            },
+            {
+              "u": 47027775,
+              "s": 46891000,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-13",
+              "fileId": "8076263565",
+              "e": 47012000
+            },
+            {
+              "u": 50076130,
+              "s": 47032000,
+              "e": 50073000,
+              "fileType": "SEC_HR",
+              "fileId": "8076263565",
+              "dateString": "2026-08-13"
+            },
+            {
+              "s": 50074000,
+              "fileId": "8076263565",
+              "dateString": "2026-08-13",
+              "u": 50449977,
+              "e": 50447000,
+              "fileType": "SEC_HR"
+            },
+            {
+              "dateString": "2026-08-13",
+              "s": 50448000,
+              "e": 50584000,
+              "fileType": "SEC_HR",
+              "u": 50587334,
+              "fileId": "8076263565"
+            },
+            {
+              "fileId": "8076263565",
+              "dateString": "2026-08-13",
+              "u": 51220569,
+              "s": 50585000,
+              "e": 51202000,
+              "fileType": "SEC_HR"
+            },
+            {
+              "e": 55039000,
+              "s": 51224000,
+              "fileType": "SEC_HR",
+              "fileId": "8076263565",
+              "dateString": "2026-08-13",
+              "u": 55042336
+            },
+            {
+              "s": 55040000,
+              "fileId": "8076263565",
+              "dateString": "2026-08-13",
+              "fileType": "SEC_HR",
+              "u": 57017660,
+              "e": 55493000
+            },
+            {
+              "s": 61218000,
+              "dateString": "2026-08-13",
+              "e": 61493000,
+              "u": 62492147,
+              "fileId": "8076263565",
+              "fileType": "SEC_HR"
+            }
+          ],
+          "deviceSN": "16,",
+          "deviceId": "16,AABBCCFFFE001122"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "second_heart_rate",
+        "subType": "real_data",
+        "timestamp": 1786665600000,
+        "value": {
+          "deviceId": "14,AABBCCFFFE001122",
+          "deviceSN": "14,",
+          "deviceSource": "14,12345678",
+          "startTime": 1786672325000,
+          "samples": [
+            {
+              "e": 704000,
+              "fileType": "SEC_HR",
+              "u": 758356,
+              "s": 0,
+              "dateString": "2026-08-14",
+              "fileId": "8076832342"
+            },
+            {
+              "fileType": "SEC_HR",
+              "e": 2480000,
+              "s": 2119000,
+              "u": 2481492,
+              "fileId": "8076832342",
+              "dateString": "2026-08-14"
+            },
+            {
+              "e": 5574000,
+              "fileType": "SEC_HR",
+              "dateString": "2026-08-14",
+              "u": 5750887,
+              "s": 2480000,
+              "fileId": "8076832342"
+            },
+            {
+              "fileId": "8076832342",
+              "fileType": "SEC_HR",
+              "u": 5956450,
+              "e": 5954000,
+              "s": 5779000,
+              "dateString": "2026-08-14"
+            },
+            {
+              "fileId": "8076832342",
+              "fileType": "SEC_HR",
+              "u": 6399864,
+              "e": 6054000,
+              "s": 5955000,
+              "dateString": "2026-08-14"
+            },
+            {
+              "fileId": "8076832342",
+              "fileType": "SEC_HR",
+              "s": 6440000,
+              "dateString": "2026-08-14",
+              "e": 6595000,
+              "u": 6596139
+            },
+            {
+              "e": 6714000,
+              "dateString": "2026-08-14",
+              "u": 6825445,
+              "s": 6596000,
+              "fileId": "8076832342",
+              "fileType": "SEC_HR"
+            },
+            {
+              "fileId": "8076832342",
+              "dateString": "2026-08-14",
+              "s": 23178000,
+              "e": 23455000,
+              "u": 34864179,
+              "fileType": "SEC_HR"
+            },
+            {
+              "s": 39859000,
+              "dateString": "2026-08-14",
+              "fileType": "SEC_HR",
+              "u": 43470092,
+              "e": 43466000,
+              "fileId": "8076832342"
+            },
+            {
+              "e": 46599000,
+              "u": 46601742,
+              "s": 43467000,
+              "fileType": "SEC_HR",
+              "fileId": "8076832342",
+              "dateString": "2026-08-14"
+            },
+            {
+              "s": 46600000,
+              "u": 46744455,
+              "e": 46734000,
+              "dateString": "2026-08-14",
+              "fileType": "SEC_HR",
+              "fileId": "8076832342"
+            },
+            {
+              "s": 46757000,
+              "fileId": "8076832342",
+              "u": 46980963,
+              "e": 46795000,
+              "dateString": "2026-08-14",
+              "fileType": "SEC_HR"
+            },
+            {
+              "u": 47555434,
+              "e": 47553000,
+              "s": 46998000,
+              "dateString": "2026-08-14",
+              "fileType": "SEC_HR",
+              "fileId": "8076832342"
+            },
+            {
+              "u": 52542763,
+              "e": 51414000,
+              "dateString": "2026-08-14",
+              "s": 47554000,
+              "fileType": "SEC_HR",
+              "fileId": "8076832342"
+            }
+          ],
+          "timeZone": "14,Asia/Calcutta",
+          "deviceType": "14,-1"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+"""Lookup tables for Zepp's numeric codes and sentinel values.
+
+Everything here is either verified against the fixture corpus or explicitly
+marked unverified. Nothing is guessed silently: a code we cannot prove is
+reported as unknown rather than given a plausible-sounding name, because the
+consumer is an LLM that will restate whatever we label as fact.
+"""
+
+from __future__ import annotations
+
+# Sleep stage modes. VERIFIED against tests/fixtures/zepp/014: summing stage
+# minutes per mode reproduces the summary's own lt/dp/wk/dt totals exactly on
+# three separate nights.
+#
+# Note `dt` is REM. Implementations that report `dp + lt` as "total sleep" drop
+# REM entirely -- 73, 53 and 96 minutes on the three verified nights.
+SLEEP_STAGE_MODES: dict[int, str] = {
+    4: "light",
+    5: "deep",
+    7: "awake",
+    8: "rem",
+}
+
+SLEEP_SUMMARY_FIELDS: dict[str, str] = {
+    "lt": "light_minutes",
+    "dp": "deep_minutes",
+    "dt": "rem_minutes",
+    "wk": "awake_minutes",
+    "wc": "wake_count",
+    "ss": "sleep_score",
+    "st": "sleep_start_ts",
+    "ed": "sleep_end_ts",
+    "rhr": "resting_heart_rate",
+    "is": "fall_asleep_minutes",
+}
+
+# Sport type codes, all confirmed by the account owner against the Zepp app
+# on 2026-08-16. The payload itself carries no human-readable sport name, so
+# this map cannot be derived from the data alone.
+#
+#  1: outdoor running     3363 m in 1190 s = 2.83 m/s, GPS track
+#  8: walking             1064 m in 909 s = 1.17 m/s at 94 steps/min
+# 14: pool swimming       carries swolf / swim_pool_length / stroke counts
+# 22: hiking              2298-2624 m over 76-100 min, high calorie burn
+#                         with a step count -- slow ground speed, hard effort
+# 52: strength training   zero distance, total_group = set count, plus a
+#                         strengthAssess JSON stream
+#
+# Codes outside this map are reported as unknown_sport_<code> rather than
+# guessed. A fabricated sport name in front of the model becomes a fact.
+SPORT_CODES: dict[int, str] = {
+    1: "outdoor_running",
+    8: "walking",
+    14: "pool_swimming",
+    22: "hiking",
+    52: "strength_training",
+}
+
+
+def sport_name(code: object) -> str:
+    try:
+        return SPORT_CODES.get(int(code), f"unknown_sport_{code}")
+    except (TypeError, ValueError):
+        return f"unknown_sport_{code}"
+
+
+# Sentinels. Zepp does not use a single not-applicable marker; it uses a
+# different one per field family, and several are plausible readings in their
+# own units. -20000 rendered as an altitude in metres looks like data.
+SENTINELS: dict[str, tuple[float, ...]] = {
+    "altitude": (-20000.0, -1.0),
+    "angle": (-361.0,),
+    "elevation": (-100.0, -1.0),
+    # -274 C is below absolute zero: it is the "no thermometer reading"
+    # marker. Only the pool swims carry a real temperature, because the
+    # watch is reading water.
+    "temperature": (-274.0, -273.0, -1.0),
+    # SpO2 uses TWO markers -- -1 on most activities, 0 on the hikes. A
+    # blood oxygen saturation of 0% is not a reading.
+    "percentage": (0.0, -1.0),
+    "default": (-1.0,),
+}
+
+# Per-minute heart rate byte stream (`data_hr`). 254 (0xFE) and 255 dominate
+# unworn stretches; 0 means no reading, not a stopped heart.
+HR_BYTE_SENTINELS = frozenset({0, 254, 255})
+
+
+def is_sentinel(value: float, family: str = "default") -> bool:
+    return value in SENTINELS.get(family, SENTINELS["default"])
+
+
+def clean(value: object, family: str = "default") -> float | None:
+    """Return the number, or None when it is that field's not-applicable marker."""
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return None if is_sentinel(number, family) else number

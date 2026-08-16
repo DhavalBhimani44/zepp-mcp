@@ -1,0 +1,20 @@
+{
+  "seq": 37,
+  "name": "ev2_blood_pressure_real_data",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/v2/users/me/events",
+  "params": {
+    "from": "1784140200000",
+    "to": "1786732200000",
+    "eventType": "blood_pressure",
+    "subType": "real_data",
+    "limit": 20
+  },
+  "status": 200,
+  "elapsed_ms": 277,
+  "body_bytes": 12,
+  "empty_200": true,
+  "body_parsed": {
+    "items": []
+  }
+}

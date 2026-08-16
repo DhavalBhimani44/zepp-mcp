@@ -1,0 +1,38 @@
+{
+  "seq": 15,
+  "name": "profile",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/huami.health.getUserInfo.json",
+  "params": null,
+  "status": 200,
+  "elapsed_ms": 383,
+  "body_bytes": 4844,
+  "empty_200": false,
+  "body_parsed": {
+    "code": 1,
+    "message": "success",
+    "data": {
+      "userIntroduction": null,
+      "defaultFields": [],
+      "age": 0,
+      "alarm_clock": "[{\"mDaysForSupportCalendar\":127,\"index\":0,\"enabled\":false,\"visible\":true,\"mDays\":127,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":15,\"year\":2026,\"second\":0},\"lazySleepEnable\":false,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":127,\"index\":1,\"enabled\":false,\"visible\":false,\"mDays\":127,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":2,\"enabled\":false,\"visible\":false,\"mDays\":128,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":3,\"enabled\":false,\"visible\":false,\"mDays\":0,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":4,\"enabled\":false,\"visible\":false,\"mDays\":0,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":5,\"enabled\":false,\"visible\":false,\"mDays\":0,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":6,\"enabled\":false,\"visible\":false,\"mDays\":0,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":7,\"enabled\":false,\"visible\":false,\"mDays\":0,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":8,\"enabled\":false,\"visible\":false,\"mDays\":0,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false},{\"mDaysForSupportCalendar\":0,\"index\":9,\"enabled\":false,\"visible\":false,\"mDays\":0,\"calendar\":{\"dayOfMonth\":15,\"month\":7,\"hourOfDay\":7,\"minute\":0,\"year\":2026,\"second\":0},\"lazySleepEnable\":true,\"isSmart\":false,\"mSmartWakeupDuration\":0,\"intelligenceWakeUp\":false}]",
+      "avatar": "<avatar_url>",
+      "birthday": "1990-01",
+      "calories": 0,
+      "config": "{\"flipWrist\":false,\"timePanelType\":0,\"dialSetting\":0,\"disconnectRemind\":\"{\\\"enable\\\":false,\\\"startIndex\\\":480,\\\"stopIndex\\\":1260}\",\"wearHand\":\"LEFT_HAND\",\"incallNameDisplayEnabled\":true,\"timePanelLang\":0,\"goalStepsCount\":10000,\"weightMergeResult\":false,\"weatherSetting\":\"{\\\"alerts\\\":true,\\\"city\\\":\\\"\\\",\\\"locationKey\\\":\\\"\\\",\\\"autoLocate\\\":true,\\\"temp\\\":0,\\\"isNeedMigrationWeatherWay\\\":true,\\\"affiliation\\\":\\\"\\\"}\",\"phoneNotifyDelayEnable\":false,\"inComingCallNotifyTime\":3,\"liftWristTime\":\"{\\\"stop\\\":1320,\\\"wristSpeed\\\":0,\\\"allday\\\":false,\\\"start\\\":420}\",\"liftWristBrightView\":false,\"smsNameDisplayEnabled\":true,\"longPressSettings\":0,\"iosappNotifySettings\":\"[{\\\"enable\\\":true,\\\"bundleID\\\":\\\"com.apple.mobilephone\\\"},{\\\"enable\\\":true,\\\"bundleID\\\":\\\"com.apple.mobilemail\\\"},{\\\"bundleID\\\":\\\"com.apple.MobileSMS\\\",\\\"enable\\\":true}]\",\"goalRemind\":true,\"incallNotifyEnabled\":true,\"quietMode\":\"{\\\"stop\\\":420,\\\"enable\\\":false,\\\"enableType\\\":1,\\\"qmLiftWristEnable\\\":false,\\\"start\\\":1320}\",\"lightColor\":\"BLUE\",\"sedentaryRemind\":\"{\\\"enable\\\":false,\\\"interval\\\":60,\\\"workSt\\\":480,\\\"workEd\\\":1260,\\\"middayRest\\\":[{\\\"enable\\\":true,\\\"start\\\":720,\\\"stop\\\":840}]}\"}",
+      "creat_time": 1784546757,
+      "distance": 0,
+      "gender": 0,
+      "height": 175,
+      "last_login_time": 1786451029,
+      "location": null,
+      "weight": 70.0,
+      "weight_float": 70.0,
+      "signature": "",
+      "nick_name": "Alex",
+      "daysportgoal": "",
+      "manual_audit_nick_name": null,
+      "manual_audit_avatar": null
+    }
+  }
+}

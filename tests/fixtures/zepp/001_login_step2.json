@@ -1,0 +1,65 @@
+{
+  "seq": 1,
+  "name": "login_step2",
+  "method": "POST",
+  "url": "https://api-mifit.zepp.com/v2/client/login",
+  "params": {
+    "country_code": "US",
+    "region": "us-west-2"
+  },
+  "status": 200,
+  "elapsed_ms": 965,
+  "body_bytes": 1129,
+  "empty_200": false,
+  "body_parsed": {
+    "token_info": {
+      "login_token": "<login_token>",
+      "app_token": "<app_token>",
+      "user_id": "<user_id>",
+      "ttl": 31536000,
+      "app_ttl": 2592000
+    },
+    "regist_info": {
+      "is_new_user": 0,
+      "regist_date": 1784546744726,
+      "region": "11",
+      "country_code": "IN"
+    },
+    "thirdparty_info": {
+      "nickname": "example_user",
+      "icon": "",
+      "third_id": "THIRD_PARTY_ID_REDACTED_0000000000",
+      "email": "<email>"
+    },
+    "result": "ok",
+    "domain": {
+      "id-dns": "https://account-us3.zepp.com"
+    },
+    "domains": [
+      {
+        "cnames": [
+          "api-user-us3.zepp.com"
+        ],
+        "host": "api-user.zepp.com"
+      },
+      {
+        "cnames": [
+          "api-mifit-us3.zepp.com"
+        ],
+        "host": "api-mifit.zepp.com"
+      },
+      {
+        "cnames": [
+          "api-watch-us3.zepp.com"
+        ],
+        "host": "api-watch.zepp.com"
+      },
+      {
+        "cnames": [
+          "auth-us3.zepp.com"
+        ],
+        "host": "auth.zepp.com"
+      }
+    ]
+  }
+}

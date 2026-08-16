@@ -1,0 +1,77 @@
+name: Bug report
+description: Something returns wrong data or does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report.
+
+        **Do not paste raw API responses.** They contain your name, device
+        serial, and possibly your location. Describe the shape of the problem,
+        or paste output only after running it through
+        `uv run tools/anonymize_fixtures.py`.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did the tool return, and what did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Which tool, with which arguments?
+      placeholder: |
+        1. Called zepp_list_workouts with from_date "2026-08-01"
+        2. The hiking entry showed ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Wrong value or unit
+        - Unknown sport code
+        - Authentication or token
+        - Server will not start
+        - MCP client integration
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: watch
+    attributes:
+      label: Watch model
+      description: Helpful for anything involving sport codes or missing metrics.
+      placeholder: Amazfit GTR 4
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag or commit SHA.
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.13.13"
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I ran `uv run pytest` and reported any failures below
+          required: true
+        - label: I have not included personal data, credentials or raw captures
+          required: true

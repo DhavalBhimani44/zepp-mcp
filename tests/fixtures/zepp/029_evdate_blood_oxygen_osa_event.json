@@ -1,0 +1,21 @@
+{
+  "seq": 29,
+  "name": "evdate_blood_oxygen_osa_event",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/users/<user_id>/events/dateString",
+  "params": {
+    "from": "2026-07-16",
+    "to": "2026-08-15",
+    "eventType": "blood_oxygen",
+    "subType": "osa_event",
+    "timeZone": "Asia/Kolkata",
+    "limit": 20
+  },
+  "status": 200,
+  "elapsed_ms": 342,
+  "body_bytes": 12,
+  "empty_200": true,
+  "body_parsed": {
+    "items": []
+  }
+}

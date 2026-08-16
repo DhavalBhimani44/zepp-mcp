@@ -1,0 +1,18 @@
+{
+  "seq": 18,
+  "name": "blood_pressure",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/users/me/bloodPressure",
+  "params": null,
+  "status": 400,
+  "elapsed_ms": 323,
+  "body_bytes": 126,
+  "empty_200": false,
+  "body_parsed": {
+    "timestamp": "2026-08-15T08:36:55.215+00:00",
+    "status": 400,
+    "error": "Bad Request",
+    "message": "",
+    "path": "/users/me/bloodPressure"
+  }
+}

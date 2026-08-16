@@ -1,0 +1,18 @@
+{
+  "seq": 16,
+  "name": "manual_data",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/v1/user/manualData.json",
+  "params": null,
+  "status": 400,
+  "elapsed_ms": 266,
+  "body_bytes": 127,
+  "empty_200": false,
+  "body_parsed": {
+    "timestamp": "2026-08-15T08:36:51.646+00:00",
+    "status": 400,
+    "error": "Bad Request",
+    "message": "",
+    "path": "/v1/user/manualData.json"
+  }
+}

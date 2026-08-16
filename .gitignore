@@ -1,0 +1,29 @@
+# Credentials. Never commit.
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Raw spike captures. NEVER commit these directly — they come straight off the
+# live Zepp API and carry credentials, identity and GPS coordinates.
+#
+# The safe path into the repo is:
+#   spike/promote.py           excludes GPS workouts, re-scrubs the rest
+#   tools/anonymize_fixtures.py strips identity, biometrics and hardware ids
+#   tools/check_fixtures.py     verifies, and runs in CI
+#
+# Only tests/fixtures/zepp/ is tracked. Removing these rules reopens the leak.
+spike/out/
+spike/FINDINGS.md
+
+# Local identifier map used by tools/anonymize_fixtures.py.
+# Plaintext list of your own identifiers. Never commit.
+tools/identities.local.json

@@ -1,0 +1,425 @@
+[
+  {
+    "seq": 0,
+    "name": "login_step1_api-user.zepp.com_us-west-2_US",
+    "url": "https://api-user.zepp.com/v2/registrations/tokens",
+    "status": 303,
+    "body_bytes": 0,
+    "empty_200": false,
+    "elapsed_ms": 1293
+  },
+  {
+    "seq": 1,
+    "name": "login_step2",
+    "url": "https://api-mifit.zepp.com/v2/client/login",
+    "status": 200,
+    "body_bytes": 1129,
+    "empty_200": false,
+    "elapsed_ms": 965
+  },
+  {
+    "seq": 2,
+    "name": "region_api-mifit.zepp.com",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 88375,
+    "empty_200": false,
+    "elapsed_ms": 565
+  },
+  {
+    "seq": 3,
+    "name": "retention_2025",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 282
+  },
+  {
+    "seq": 4,
+    "name": "retention_2024",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 277
+  },
+  {
+    "seq": 5,
+    "name": "retention_2023",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 413
+  },
+  {
+    "seq": 6,
+    "name": "retention_2022",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 337
+  },
+  {
+    "seq": 7,
+    "name": "retention_2021",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 284
+  },
+  {
+    "seq": 8,
+    "name": "retention_2020",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 289
+  },
+  {
+    "seq": 9,
+    "name": "retention_2019",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 294
+  },
+  {
+    "seq": 10,
+    "name": "retention_2018",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 278
+  },
+  {
+    "seq": 11,
+    "name": "retention_2017",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 284
+  },
+  {
+    "seq": 12,
+    "name": "retention_2016",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 40,
+    "empty_200": true,
+    "elapsed_ms": 289
+  },
+  {
+    "seq": 13,
+    "name": "query_type_summary",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 26751,
+    "empty_200": false,
+    "elapsed_ms": 312
+  },
+  {
+    "seq": 14,
+    "name": "query_type_detail",
+    "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+    "status": 200,
+    "body_bytes": 88375,
+    "empty_200": false,
+    "elapsed_ms": 630
+  },
+  {
+    "seq": 15,
+    "name": "profile",
+    "url": "https://api-mifit.zepp.com/huami.health.getUserInfo.json",
+    "status": 200,
+    "body_bytes": 4844,
+    "empty_200": false,
+    "elapsed_ms": 383
+  },
+  {
+    "seq": 16,
+    "name": "manual_data",
+    "url": "https://api-mifit.zepp.com/v1/user/manualData.json",
+    "status": 400,
+    "body_bytes": 127,
+    "empty_200": false,
+    "elapsed_ms": 266
+  },
+  {
+    "seq": 17,
+    "name": "weight",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/members/-1/weightRecords",
+    "status": 200,
+    "body_bytes": 791,
+    "empty_200": false,
+    "elapsed_ms": 284
+  },
+  {
+    "seq": 18,
+    "name": "blood_pressure",
+    "url": "https://api-mifit.zepp.com/users/me/bloodPressure",
+    "status": 400,
+    "body_bytes": 126,
+    "empty_200": false,
+    "elapsed_ms": 323
+  },
+  {
+    "seq": 19,
+    "name": "heart_rate",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/heartRate",
+    "status": 400,
+    "body_bytes": 130,
+    "empty_200": false,
+    "elapsed_ms": 278
+  },
+  {
+    "seq": 20,
+    "name": "sport_load",
+    "url": "https://api-mifit.zepp.com/v2/watch/users/<user_id>/WatchSportStatistics/SPORT_LOAD",
+    "status": 500,
+    "body_bytes": 113,
+    "empty_200": false,
+    "elapsed_ms": 268
+  },
+  {
+    "seq": 21,
+    "name": "vo2_max",
+    "url": "https://api-mifit.zepp.com/v2/watch/users/<user_id>/WatchSportStatistics/VO2_MAX",
+    "status": 500,
+    "body_bytes": 113,
+    "empty_200": false,
+    "elapsed_ms": 270
+  },
+  {
+    "seq": 22,
+    "name": "second_hr_index",
+    "url": "https://api-mifit.zepp.com/users/me/fileInfo/events",
+    "status": 200,
+    "body_bytes": 12166,
+    "empty_200": false,
+    "elapsed_ms": 366
+  },
+  {
+    "seq": 23,
+    "name": "ev1_all_day_stress_none",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+    "status": 200,
+    "body_bytes": 25140,
+    "empty_200": false,
+    "elapsed_ms": 337
+  },
+  {
+    "seq": 24,
+    "name": "ev1_PaiHealthInfo_none",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+    "status": 200,
+    "body_bytes": 8256,
+    "empty_200": false,
+    "elapsed_ms": 288
+  },
+  {
+    "seq": 25,
+    "name": "ev1_blood_oxygen_click",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+    "status": 200,
+    "body_bytes": 514,
+    "empty_200": false,
+    "elapsed_ms": 333
+  },
+  {
+    "seq": 26,
+    "name": "ev1_single_stress_none",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+    "status": 200,
+    "body_bytes": 256,
+    "empty_200": false,
+    "elapsed_ms": 291
+  },
+  {
+    "seq": 27,
+    "name": "ev1_health_data_blood_pressure",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+    "status": 200,
+    "body_bytes": 12,
+    "empty_200": true,
+    "elapsed_ms": 305
+  },
+  {
+    "seq": 28,
+    "name": "evdate_blood_oxygen_odi",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/events/dateString",
+    "status": 200,
+    "body_bytes": 1247,
+    "empty_200": false,
+    "elapsed_ms": 291
+  },
+  {
+    "seq": 29,
+    "name": "evdate_blood_oxygen_osa_event",
+    "url": "https://api-mifit.zepp.com/users/<user_id>/events/dateString",
+    "status": 200,
+    "body_bytes": 12,
+    "empty_200": true,
+    "elapsed_ms": 342
+  },
+  {
+    "seq": 30,
+    "name": "ev2_readiness_watch_score",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 4524,
+    "empty_200": false,
+    "elapsed_ms": 289
+  },
+  {
+    "seq": 31,
+    "name": "ev2_DailyHealth_summary",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 4125,
+    "empty_200": false,
+    "elapsed_ms": 356
+  },
+  {
+    "seq": 32,
+    "name": "ev2_Charge_real_data",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 3589089,
+    "empty_200": false,
+    "elapsed_ms": 2113
+  },
+  {
+    "seq": 33,
+    "name": "ev2_Charge_stress_data",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 506212,
+    "empty_200": false,
+    "elapsed_ms": 551
+  },
+  {
+    "seq": 34,
+    "name": "ev2_hrv_sdnn_real_data",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 2981,
+    "empty_200": false,
+    "elapsed_ms": 278
+  },
+  {
+    "seq": 35,
+    "name": "ev2_HRVRMSSD_real_data",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 107464,
+    "empty_200": false,
+    "elapsed_ms": 651
+  },
+  {
+    "seq": 36,
+    "name": "ev2_RespiratoryRate_real_data",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 10687,
+    "empty_200": false,
+    "elapsed_ms": 330
+  },
+  {
+    "seq": 37,
+    "name": "ev2_blood_pressure_real_data",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 12,
+    "empty_200": true,
+    "elapsed_ms": 277
+  },
+  {
+    "seq": 38,
+    "name": "ev2_Emotion_real_data",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 12,
+    "empty_200": true,
+    "elapsed_ms": 279
+  },
+  {
+    "seq": 39,
+    "name": "ev2_LactateThreshold_summary",
+    "url": "https://api-mifit.zepp.com/v2/users/me/events",
+    "status": 200,
+    "body_bytes": 12,
+    "empty_200": true,
+    "elapsed_ms": 311
+  },
+  {
+    "seq": 40,
+    "name": "workout_history_run",
+    "url": "https://api-mifit.zepp.com/v1/sport/run/history.json",
+    "status": 200,
+    "body_bytes": 32539,
+    "empty_200": false,
+    "elapsed_ms": 289
+  },
+  {
+    "seq": 41,
+    "name": "workout_detail_type14_1786761306",
+    "url": "https://api-mifit.zepp.com/v1/sport/run/detail.json",
+    "status": 200,
+    "body_bytes": 87226,
+    "empty_200": false,
+    "elapsed_ms": 330
+  },
+  {
+    "seq": 42,
+    "name": "workout_detail_type52_1786714291",
+    "url": "https://api-mifit.zepp.com/v1/sport/run/detail.json",
+    "status": 200,
+    "body_bytes": 45832,
+    "empty_200": false,
+    "elapsed_ms": 643
+  },
+  {
+    "seq": 43,
+    "name": "workout_detail_type8_1786631538",
+    "url": "https://api-mifit.zepp.com/v1/sport/run/detail.json",
+    "status": 200,
+    "body_bytes": 46853,
+    "empty_200": false,
+    "elapsed_ms": 333
+  },
+  {
+    "seq": 44,
+    "name": "workout_detail_type22_1786267428",
+    "url": "https://api-mifit.zepp.com/v1/sport/run/detail.json",
+    "status": 200,
+    "body_bytes": 405932,
+    "empty_200": false,
+    "elapsed_ms": 924
+  },
+  {
+    "seq": 45,
+    "name": "workout_detail_type1_1786191738",
+    "url": "https://api-mifit.zepp.com/v1/sport/run/detail.json",
+    "status": 200,
+    "body_bytes": 133975,
+    "empty_200": false,
+    "elapsed_ms": 671
+  },
+  {
+    "seq": 46,
+    "name": "workout_detail_longest_1786258281",
+    "url": "https://api-mifit.zepp.com/v1/sport/run/detail.json",
+    "status": 200,
+    "body_bytes": 538406,
+    "empty_200": false,
+    "elapsed_ms": 1056
+  }
+]

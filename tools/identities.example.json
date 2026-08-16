@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "Copy to identities.local.json and fill in the values from YOUR captures.",
+    "identities.local.json is git-ignored and must never be committed: it is",
+    "a plaintext list of your own identifiers.",
+    "",
+    "The anonymiser replaces every occurrence of each key with its value,",
+    "including inside base64-wrapped JSON. Keep the SHAPE of the replacement",
+    "the same as the original (a 12-hex MAC stays 12 hex) so that any length",
+    "check or parser in a decoder still sees a well-formed value.",
+    "",
+    "Longest keys are substituted first, so a short id nested inside a longer",
+    "composite (a device id inside 'run.<id>.huami.com') is not half-replaced."
+  ],
+
+  "strings": {
+    "your-zepp-handle": "example_user",
+    "YourFirstName": "Alex",
+    "your-third-party-oauth-id": "THIRD_PARTY_ID_REDACTED_0000000000",
+    "AABBCCDDEEFF1122": "AABBCCFFFE001122",
+    "AABBCCDDEEFF": "AABBCC001122",
+    "12345678901234": "00000000000000",
+    "87654321": "12345678",
+    "00000000-0000-0000-0000-000000000000": "00000000-0000-4000-8000-000000000000",
+    "1.2.3.4": "0.0.0.0"
+  },
+
+  "_integers_comment": [
+    "Zepp sends the same identifier as a string in one endpoint and a bare",
+    "integer in another (a band row's `source`, the sleep block's",
+    "sleepSource / napSleepSource). String replacement cannot see those, so",
+    "list them here as numbers too."
+  ],
+  "integers": {
+    "87654321": 12345678,
+    "12345678901234": 0
+  }
+}

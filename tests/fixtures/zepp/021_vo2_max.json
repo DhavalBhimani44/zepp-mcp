@@ -1,0 +1,15 @@
+{
+  "seq": 21,
+  "name": "vo2_max",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/v2/watch/users/<user_id>/WatchSportStatistics/VO2_MAX",
+  "params": null,
+  "status": 500,
+  "elapsed_ms": 270,
+  "body_bytes": 113,
+  "empty_200": false,
+  "body_parsed": {
+    "code": -50000,
+    "message": "Failed to process the request. Detailed error message has been logged on server side."
+  }
+}

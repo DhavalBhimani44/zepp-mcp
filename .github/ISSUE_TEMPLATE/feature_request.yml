@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest a new tool or capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to be able to ask?
+      description: Describe the question you want answered from your data.
+      placeholder: "How does my resting heart rate change in weeks I swim more?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: If you know which endpoint or field this needs, say so.
+
+  - type: checkboxes
+    id: existing
+    attributes:
+      label: Checked first
+      options:
+        - label: I checked the Known gaps table in the README
+          required: true
+        - label: I checked whether zepp_raw_request already reaches this data
+          required: true

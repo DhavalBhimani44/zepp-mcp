@@ -1,0 +1,22 @@
+{
+  "seq": 9,
+  "name": "retention_2019",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/v1/data/band_data.json",
+  "params": {
+    "query_type": "detail",
+    "device_type": "android_phone",
+    "userid": "<userid>",
+    "from_date": "2019-08-15",
+    "to_date": "2019-09-14"
+  },
+  "status": 200,
+  "elapsed_ms": 294,
+  "body_bytes": 40,
+  "empty_200": true,
+  "body_parsed": {
+    "code": 1,
+    "message": "success",
+    "data": []
+  }
+}

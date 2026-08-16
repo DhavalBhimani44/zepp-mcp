@@ -1,0 +1,259 @@
+{
+  "seq": 34,
+  "name": "ev2_hrv_sdnn_real_data",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/v2/users/me/events",
+  "params": {
+    "from": "1784140200000",
+    "to": "1786732200000",
+    "eventType": "hrv_sdnn",
+    "subType": "real_data",
+    "limit": 20
+  },
+  "status": 200,
+  "elapsed_ms": 278,
+  "body_bytes": 2981,
+  "empty_200": false,
+  "body_parsed": {
+    "items": [
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786060800000,
+        "value": {
+          "startTime": 1786132320000,
+          "deviceType": "2,0",
+          "timeZone": "2,Asia/Calcutta",
+          "deviceId": "2,AABBCCFFFE001122",
+          "deviceSN": "2,",
+          "samples": [
+            {
+              "s": 0,
+              "sdnn": 33.54,
+              "u": 3681711
+            },
+            {
+              "u": 9135632,
+              "sdnn": 67.61,
+              "s": 5640000
+            }
+          ],
+          "deviceSource": "2,12345678"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786147200000,
+        "value": {
+          "timeZone": "4,Asia/Calcutta",
+          "samples": [
+            {
+              "u": 2961374,
+              "s": 0,
+              "sdnn": 49.92
+            },
+            {
+              "sdnn": 101.91,
+              "s": 8640000,
+              "u": 13655878
+            },
+            {
+              "u": 78462162,
+              "s": 75420000,
+              "sdnn": 22.45
+            },
+            {
+              "sdnn": 21.41,
+              "u": 87485574,
+              "s": 84360000
+            }
+          ],
+          "deviceId": "4,AABBCCFFFE001122",
+          "startTime": 1786147500000,
+          "deviceSN": "4,",
+          "deviceSource": "4,12345678",
+          "deviceType": "4,0"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786233600000,
+        "value": {
+          "deviceSource": "4,12345678",
+          "timeZone": "4,Asia/Calcutta",
+          "deviceType": "4,0",
+          "deviceSN": "4,",
+          "deviceId": "4,AABBCCFFFE001122",
+          "samples": [
+            {
+              "sdnn": 26.5,
+              "s": 0,
+              "u": 4694624
+            },
+            {
+              "s": 62040000,
+              "sdnn": 31.14,
+              "u": 62346136
+            },
+            {
+              "sdnn": 100.34,
+              "s": 70680000,
+              "u": 73144821
+            },
+            {
+              "u": 83947142,
+              "sdnn": 84.11,
+              "s": 79380000
+            }
+          ],
+          "startTime": 1786239240000
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786320000000,
+        "value": {
+          "deviceType": "1,0",
+          "deviceSN": "1,",
+          "deviceSource": "1,12345678",
+          "samples": [
+            {
+              "sdnn": 37.66,
+              "s": 0,
+              "u": 2661031
+            }
+          ],
+          "timeZone": "1,Asia/Calcutta",
+          "startTime": 1786399740000,
+          "deviceId": "1,AABBCCFFFE001122"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786406400000,
+        "value": {
+          "deviceSN": "3,",
+          "deviceType": "3,0",
+          "startTime": 1786417020000,
+          "samples": [
+            {
+              "s": 0,
+              "u": 5188234,
+              "sdnn": 58.16
+            },
+            {
+              "s": 7020000,
+              "u": 11146098,
+              "sdnn": 92.73
+            },
+            {
+              "u": 93487782,
+              "sdnn": 39.12,
+              "s": 69960000
+            }
+          ],
+          "timeZone": "3,Asia/Calcutta",
+          "deviceId": "3,AABBCCFFFE001122",
+          "deviceSource": "3,12345678"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786492800000,
+        "value": {
+          "timeZone": "1,Asia/Calcutta",
+          "startTime": 1786504140000,
+          "deviceId": "1,AABBCCFFFE001122",
+          "deviceSource": "1,12345678",
+          "deviceType": "1,0",
+          "samples": [
+            {
+              "sdnn": 57.27,
+              "u": 6367782,
+              "s": 0
+            }
+          ],
+          "deviceSN": "1,"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786579200000,
+        "value": {
+          "deviceType": "3,0",
+          "samples": [
+            {
+              "u": 1178056,
+              "s": 0,
+              "sdnn": 30.19
+            },
+            {
+              "u": 36322619,
+              "sdnn": 42.04,
+              "s": 33840000
+            },
+            {
+              "s": 41580000,
+              "u": 46823523,
+              "sdnn": 38.98
+            }
+          ],
+          "timeZone": "3,Asia/Calcutta",
+          "deviceSN": "3,",
+          "startTime": 1786618440000,
+          "deviceId": "3,AABBCCFFFE001122",
+          "deviceSource": "3,12345678"
+        }
+      },
+      {
+        "userId": "<userId>",
+        "eventType": "hrv_sdnn",
+        "subType": "real_data",
+        "timestamp": 1786665600000,
+        "value": {
+          "deviceSource": "4,12345678",
+          "samples": [
+            {
+              "sdnn": 73.64,
+              "s": 0,
+              "u": 1802496
+            },
+            {
+              "u": 40088494,
+              "s": 36360000,
+              "sdnn": 24.86
+            },
+            {
+              "s": 68940000,
+              "u": 73820243,
+              "sdnn": 75.54
+            },
+            {
+              "s": 77760000,
+              "u": 82872952,
+              "sdnn": 62.5
+            }
+          ],
+          "deviceId": "4,AABBCCFFFE001122",
+          "deviceSN": "4,",
+          "timeZone": "4,Asia/Calcutta",
+          "deviceType": "4,0",
+          "startTime": 1786667100000
+        }
+      }
+    ]
+  }
+}

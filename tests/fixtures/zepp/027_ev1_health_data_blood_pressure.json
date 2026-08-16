@@ -1,0 +1,21 @@
+{
+  "seq": 27,
+  "name": "ev1_health_data_blood_pressure",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+  "params": {
+    "from": "1784140200000",
+    "to": "1786732200000",
+    "eventType": "health_data",
+    "limit": 20,
+    "reverse": "false",
+    "subType": "blood_pressure"
+  },
+  "status": 200,
+  "elapsed_ms": 305,
+  "body_bytes": 12,
+  "empty_200": true,
+  "body_parsed": {
+    "items": []
+  }
+}

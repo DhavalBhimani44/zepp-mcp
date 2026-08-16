@@ -1,0 +1,30 @@
+{
+  "seq": 25,
+  "name": "ev1_blood_oxygen_click",
+  "method": "GET",
+  "url": "https://api-mifit.zepp.com/users/<user_id>/events",
+  "params": {
+    "from": "1784140200000",
+    "to": "1786732200000",
+    "eventType": "blood_oxygen",
+    "limit": 20,
+    "reverse": "false",
+    "subType": "click"
+  },
+  "status": 200,
+  "elapsed_ms": 333,
+  "body_bytes": 514,
+  "empty_200": false,
+  "body_parsed": {
+    "items": [
+      {
+        "userId": "<userId>",
+        "eventType": "blood_oxygen",
+        "subType": "click",
+        "timestamp": 1786089446000,
+        "timezone": "Asia/Calcutta",
+        "extra": "{\"deviceSource\":12345678,\"spo2History\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"subType\":\"click\",\"userId\":\"\",\"timestamp\":1786089446000,\"deviceId\":\"AABBCCFFFE001122\",\"isAuto\":false,\"spo2\":99,\"appName\":\"\",\"sn\":\"00000000000000\",\"timezone\":\"Asia\\/Calcutta\"}"
+      }
+    ]
+  }
+}

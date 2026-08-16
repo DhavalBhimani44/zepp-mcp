@@ -1,0 +1,57 @@
+name: Sport code or unit confirmation
+description: Help identify an unknown sport code or confirm a flagged unit
+labels: ["data", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is one of the most useful contributions to the project.
+
+        The Zepp payload contains **no human-readable sport name** — only a
+        number — so the code map can only be built by people checking their
+        own watch against the app.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What are you reporting?
+      options:
+        - An unknown sport code
+        - A unit marked unit_verified false
+        - The te / anaerobic_te scaling question
+    validations:
+      required: true
+
+  - type: input
+    id: code
+    attributes:
+      label: Sport code
+      description: The number reported as unknown_sport_<code>.
+      placeholder: "22"
+
+  - type: input
+    id: app-name
+    attributes:
+      label: What the Zepp app calls it
+      placeholder: Hiking
+    validations:
+      required: true
+
+  - type: input
+    id: watch
+    attributes:
+      label: Watch model
+      placeholder: Amazfit GTR 4
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting numbers
+      description: |
+        For a unit question, the value this server returned alongside what the
+        app displays for the same activity. No need for a full capture.
+      placeholder: |
+        Server returned te: 43
+        Zepp app shows Training Effect 4.3

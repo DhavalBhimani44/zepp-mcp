@@ -1,0 +1,65 @@
+[project]
+name = "zepp-mcp"
+version = "0.1.0"
+description = "MCP server exposing Zepp/Amazfit health and workout data"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Dhaval Bhimani" }]
+keywords = [
+    "mcp", "model-context-protocol", "zepp", "amazfit", "huami",
+    "health", "fitness", "quantified-self", "wearable", "llm",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "mcp>=1.2.0",
+    "httpx>=0.27",
+    "pycryptodome>=3.20",
+]
+
+[project.urls]
+Homepage = "https://github.com/DhavalBhimani44/zepp-mcp"
+Repository = "https://github.com/DhavalBhimani44/zepp-mcp"
+Issues = "https://github.com/DhavalBhimani44/zepp-mcp/issues"
+Changelog = "https://github.com/DhavalBhimani44/zepp-mcp/blob/main/CHANGELOG.md"
+
+[project.scripts]
+zepp-mcp = "zepp_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["zepp_mcp"]
+
+[tool.hatch.build.targets.sdist]
+# The fixture corpus is ~8 MB and only needed to run the tests from a
+# checkout. Keep it out of the published source distribution.
+exclude = ["tests/fixtures", "spike/out", "docs/history"]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
