@@ -257,7 +257,6 @@ time too.
 | --- | --- |
 | Lap column names | Columns 1, 13 and 14 are confirmed (duration, strokes, SWOLF — see [examples](examples/README.md#how-this-example-resolved-a-documented-gap)). The remaining named columns are inferred, and anything outside the named set is returned raw. |
 | `pool_swim_pace` | Unit unconfirmed; flagged `unit_verified: false`. |
-| `te` / `anaerobic_te` | Probably scaled by 10 (observed 3–43 against a conventional 0.0–5.0 Training Effect scale), but unconfirmed, so reported raw. |
 | VO₂ max, training load | `SPORT_LOAD` and `VO2_MAX` return HTTP 500. |
 | Some endpoints | `manualData`, `bloodPressure` and `heartRate` return HTTP 400 — they need parameters not yet worked out. |
 | **Cycling** | **No cycling sport code identified** — no ride has been recorded against this code yet. A ride will report as `unknown_sport_<code>`; cadence, power and heart rate still surface via the common block, and the rest under `unclassified_metrics`. Report your code in an issue and it becomes a one-line fix. |
