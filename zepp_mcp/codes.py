@@ -110,3 +110,30 @@ def clean(value: object, family: str = "default") -> float | None:
     except (TypeError, ValueError):
         return None
     return None if is_sentinel(number, family) else number
+
+
+# Training Effect is reported at ten times its displayed value: a workout the
+# Zepp app shows as 3.2 arrives as `te: 32`, and 0.1 as `anaerobic_te: 1`.
+# Confirmed by the account holder against the app for a run reporting te 32
+# and anaerobic_te 1, displayed as aerobic 3.2 and anaerobic 0.1.
+#
+# The scale itself is the standard Firstbeat one used across Garmin, Polar
+# and Zepp. The bands are an interpretation of the number, not a measurement,
+# so they are emitted under their own key rather than replacing the value.
+TRAINING_EFFECT_SCALE = 0.1
+
+_TE_BANDS: tuple[tuple[float, str], ...] = (
+    (1.0, "no effect"),
+    (2.0, "minor"),
+    (3.0, "maintaining"),
+    (4.0, "improving"),
+    (5.0, "highly improving"),
+)
+
+
+def training_effect_band(value: float) -> str:
+    """Qualitative band for a Training Effect score on the 0.0-5.0 scale."""
+    for upper, label in _TE_BANDS:
+        if value < upper:
+            return label
+    return "overreaching"

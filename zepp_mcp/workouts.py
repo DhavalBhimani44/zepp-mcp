@@ -14,7 +14,8 @@ import datetime as dt
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .codes import clean, sport_name
+from .codes import (TRAINING_EFFECT_SCALE, clean, sport_name,
+                    training_effect_band)
 
 # Fields worth surfacing per sport, in the sport's own terms. A field is only
 # emitted when it is not that field's not-applicable sentinel.
@@ -123,6 +124,14 @@ _RENAMED_FIELDS: dict[str, str] = {
     "max_frequency": "max_cadence_per_minute",
 }
 
+# Training Effect arrives at ten times its displayed value. Scaled and
+# renamed, because `te: 32` on a 0.0-5.0 scale is not a large number -- it is
+# a different number.
+_TRAINING_EFFECT_FIELDS: dict[str, str] = {
+    "te": "aerobic_training_effect",
+    "anaerobic_te": "anaerobic_training_effect",
+}
+
 
 def _epoch(value: object) -> int | None:
     try:
@@ -184,6 +193,13 @@ def _collect(row: dict[str, Any], names: tuple[str, ...]) -> dict[str, Any]:
                 continue
             if name in _CENTIMETRE_FIELDS:
                 out[_CENTIMETRE_FIELDS[name]] = round(cleaned / 100, 2)
+            elif name in _TRAINING_EFFECT_FIELDS:
+                key = _TRAINING_EFFECT_FIELDS[name]
+                score = round(cleaned * TRAINING_EFFECT_SCALE, 1)
+                out[key] = score
+                # The band is an interpretation, so it gets its own key and
+                # never replaces the score.
+                out[f"{key}_band"] = training_effect_band(score)
             else:
                 key = _RENAMED_FIELDS.get(name, name)
                 out[key] = int(cleaned) if cleaned.is_integer() else cleaned

@@ -253,11 +253,6 @@ def zepp_describe_schema() -> dict[str, Any]:
             "cadence, power and heart rate still appear in the common "
             "summary, and its remaining metrics under unclassified_metrics. "
             "Nothing is lost except the sport label.",
-            "te and anaerobic_te are reported raw. Observed values run 3-43, "
-            "and Training Effect is conventionally a 0.0-5.0 scale, so these "
-            "are probably scaled by 10 (43 -> 4.3). Unconfirmed, so they are "
-            "NOT divided here -- report them as raw values, not as a "
-            "Training Effect score.",
             "Lap columns are recovered by inference, not documentation. The "
             "reference swim capture held 38 lap records against a summary "
             "total_trips of 36, so lap sums are unreliable -- prefer the "

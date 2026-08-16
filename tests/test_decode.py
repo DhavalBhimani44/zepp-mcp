@@ -456,3 +456,48 @@ def test_unmapped_sport_still_surfaces_cadence_power_and_heart_rate(history_rows
     assert item["summary"]["avg_heart_rate"] > 0
     # Sport-specific numbers are still visible, just not labelled as a sport.
     assert item["unclassified_metrics"]
+
+
+# -- training effect -------------------------------------------------------
+
+def test_training_effect_is_scaled_and_banded(history_rows):
+    """Zepp reports Training Effect at ten times its displayed value.
+
+    Confirmed against the app for this run: te 32 and anaerobic_te 1 display
+    as aerobic 3.2 and anaerobic 0.1. Unscaled, `te: 32` on a 0.0-5.0 scale
+    is not a large number, it is a different one.
+    """
+    row = next(r for r in history_rows if r["type"] == 1)
+    assert float(row["te"]) == 32
+    assert float(row["anaerobic_te"]) == 1
+
+    summary = workouts.normalise(row)["summary"]
+    assert summary["aerobic_training_effect"] == 3.2
+    assert summary["aerobic_training_effect_band"] == "improving"
+    assert summary["anaerobic_training_effect"] == 0.1
+    assert summary["anaerobic_training_effect_band"] == "no effect"
+
+    # The unscaled field must not survive under its raw name.
+    assert "te" not in summary
+    assert "anaerobic_te" not in summary
+
+
+@pytest.mark.parametrize("score,expected", [
+    (0.0, "no effect"), (0.9, "no effect"),
+    (1.0, "minor"), (1.9, "minor"),
+    (2.0, "maintaining"), (2.9, "maintaining"),
+    (3.0, "improving"), (3.9, "improving"),
+    (4.0, "highly improving"), (4.9, "highly improving"),
+    (5.0, "overreaching"),
+])
+def test_training_effect_bands(score, expected):
+    from zepp_mcp.codes import training_effect_band
+    assert training_effect_band(score) == expected
+
+
+def test_training_effect_sentinel_does_not_become_a_negative_score():
+    """-1 must be stripped before scaling, not turned into -0.1."""
+    row = {"type": 1, "trackid": "1786191738", "te": "-1", "anaerobic_te": "-1"}
+    summary = workouts.normalise(row)["summary"]
+    assert "aerobic_training_effect" not in summary
+    assert "anaerobic_training_effect" not in summary
