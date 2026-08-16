@@ -255,7 +255,7 @@ time too.
 
 | Gap | Detail |
 | --- | --- |
-| Lap sums | The reference swim holds 38 lap records against a summary `total_trips` of 36, with column sums roughly double the totals. Prefer the summary's own aggregates. |
+| Lap column names | Recovered by inference, though SWOLF is self-checking (`swolf == duration + strokes`) and the decoder reports how often that identity holds. Columns outside the named set are returned raw. |
 | `pool_swim_pace` | Unit unconfirmed; flagged `unit_verified: false`. |
 | `te` / `anaerobic_te` | Probably scaled by 10 (observed 3–43 against a conventional 0.0–5.0 Training Effect scale), but unconfirmed, so reported raw. |
 | VO₂ max, training load | `SPORT_LOAD` and `VO2_MAX` return HTTP 500. |
@@ -265,6 +265,12 @@ time too.
 | Metrics without tools | PAI, SpO₂, stress, HRV, respiratory rate, readiness, Body Charge and weight all return data but are reachable only via `zepp_raw_request`. |
 
 Help with any of these is welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Examples
+
+Three runnable analyses, with real output, live in
+[`examples/`](examples/README.md): swim technique against volume, training
+load against recovery, and within-session pacing decay.
 
 ## Project layout
 
@@ -276,6 +282,7 @@ zepp_mcp/           the server
   workouts.py       index row -> normalised, sport-aware summary
   codes.py          sport codes, sleep stages, sentinels
   server.py         MCP tool definitions
+examples/           runnable analyses with real output
 tools/              anonymiser, privacy gate, smoke test
 tests/fixtures/     anonymised real API captures
 docs/               design spec and API reverse-engineering findings

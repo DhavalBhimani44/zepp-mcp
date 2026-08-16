@@ -150,8 +150,14 @@ def zepp_sleep(date: str | None = None) -> dict[str, Any]:
     rows = [r for r in (outcome.data.get("data") or []) if isinstance(r, dict)]
     for row in rows:
         summary = decode.summarise_day(row)
-        if summary.get("sleep"):
-            return {"status": "ok", "date": summary["date"], **summary["sleep"]}
+        sleep = summary.get("sleep")
+        if not sleep:
+            continue
+        # A night the watch missed still produces a sleep block, just an
+        # empty one. Report that as no_data so it is never read as a night
+        # of zero sleep with a resting heart rate of zero.
+        status = "ok" if sleep.get("main_sleep_recorded", True) else "no_data"
+        return {"status": status, "date": summary["date"], **sleep}
     return {"status": "no_data", "date": day,
             "note": "No sleep block in this date's record."}
 

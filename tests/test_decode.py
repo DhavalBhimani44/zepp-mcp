@@ -147,20 +147,49 @@ def test_unverified_stream_is_flagged(swim_detail):
 
 # -- laps ------------------------------------------------------------------
 
-def test_laps_decode_with_durations_and_a_reliability_note(swim_detail, history_rows):
+def test_lap_records_separate_lengths_from_set_summaries(swim_detail, history_rows):
+    """The lap list interleaves per-length rows with per-set summary rows.
+
+    Counting them together is what made the record count disagree with
+    total_trips and the column sums come to roughly double. Split apart, both
+    reconcile against the workout summary exactly.
+    """
     laps = decode.decode_laps(swim_detail["lap"])
     swim = next(r for r in history_rows if str(r["trackid"]) == "1786761306")
 
-    assert laps["lap_count"] > 0
-    first = laps["laps"][0]
-    assert first["distance_metres"] == float(swim["swim_pool_length"])
-    assert all("duration_seconds" in lap for lap in laps["laps"])
+    assert laps["unit_distance_metres"] == float(swim["swim_pool_length"])
+    assert laps["lap_count"] == int(swim["total_trips"])
+    assert laps["set_count"] > 0
+
+    # Set summaries carry the workout's own totals.
+    assert sum(s["distance_metres"] for s in laps["sets"]) == pytest.approx(
+        float(swim["dis"]))
+    assert sum(s["strokes"] for s in laps["sets"]) == pytest.approx(
+        float(swim["total_strokes"]))
+
     assert all("raw_columns" in lap for lap in laps["laps"])
 
-    # The record count disagrees with the summary; the note must say so
-    # rather than let a caller sum the columns and trust the result.
-    assert laps["lap_count"] != int(swim["total_trips"])
-    assert "total_trips" in laps["note"]
+
+def test_swolf_column_is_self_checking(swim_detail):
+    """SWOLF is seconds + strokes for the length, which makes columns 1, 13
+    and 14 verify each other. Tolerance is 1 because Zepp rounds the sum and
+    the components independently."""
+    laps = decode.decode_laps(swim_detail["lap"])
+    check = laps["swolf_check"]
+    assert check["identity_holds"] / check["laps_checked"] > 0.9
+    lap = laps["laps"][0]
+    assert abs(lap["swolf"] - (lap["duration_seconds"] + lap["strokes"])) <= 1
+
+
+def test_lap_mapping_flags_itself_when_the_identity_breaks():
+    """On a sport where the columns mean something else, the decoder must say
+    so rather than present the names as fact."""
+    packed = ";".join(",".join(["0", "99", "100", "0", "120", "500"]
+                               + ["7"] * 8 + ["999"] + ["0"] * 55)
+                      for _ in range(3))
+    laps = decode.decode_laps(packed)
+    assert "note" in laps
+    assert "unverified" in laps["note"]
 
 
 def test_gps_section_reports_absence_rather_than_inventing_a_track(swim_detail):
@@ -302,3 +331,44 @@ def test_real_temperature_still_survives(history_rows):
     swim = next(r for r in history_rows if r["type"] == 14)
     summary = workouts.normalise(swim)["summary"]
     assert 20 < summary["avg_temperature"] < 40
+
+
+# -- missing sleep ---------------------------------------------------------
+
+def test_unrecorded_night_is_not_reported_as_zeros():
+    """A night the watch missed comes back with every field zeroed and
+    sleepSource -1. Emitting `resting_heart_rate_bpm: 0` states a missing
+    measurement as a measurement."""
+    sleep = {"lt": 0, "dp": 0, "dt": 0, "wk": 0, "wc": 0, "ss": 0, "rhr": 0,
+             "st": 1786645800, "ed": 1786645800, "stage": [], "sleepSource": -1}
+    block = decode._sleep_block(sleep)
+    assert block["main_sleep_recorded"] is False
+    assert "sleep_score" not in block
+    assert "resting_heart_rate_bpm" not in block
+    assert "light_minutes" not in block
+    # A zero-length window is not a real night.
+    assert "start_local" not in block
+    assert "missing data" in block["note"]
+
+
+def test_naps_are_surfaced_from_odd_stage():
+    """Daytime sleep lives in odd_stage. On a day with no main sleep it is
+    the only sleep there is, and the first implementation dropped it."""
+    sleep = {"lt": 0, "dp": 0, "dt": 0, "stage": [], "sleepSource": -1,
+             "odd_stage": [{"start": 1648, "stop": 1663, "mode": 4},
+                           {"start": 2403, "stop": 2435, "mode": 5},
+                           {"start": 1775, "stop": 1781, "mode": 7}]}
+    block = decode._sleep_block(sleep)
+    assert block["main_sleep_recorded"] is False
+    naps = block["naps"]
+    assert naps["nap_count"] == 3
+    # 16 light + 33 deep asleep; the 7-minute awake span is not sleep.
+    assert naps["stage_minutes"] == {"light": 16, "deep": 33, "awake": 7}
+    assert naps["total_asleep_minutes"] == 49
+
+
+def test_a_real_night_still_reports_normally(band_rows):
+    block = decode.summarise_day(band_rows[0])["sleep"]
+    assert "main_sleep_recorded" not in block
+    assert block["sleep_score"] > 0
+    assert block["resting_heart_rate_bpm"] > 0
