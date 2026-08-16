@@ -40,7 +40,7 @@ real captured responses.
 
 ## Contents
 
-- [Features](#features) · [Quick start](#quick-start) · [Connecting a client](#connecting-a-client)
+- [Features](#features) · [Setup for Users](#setup-for-users) · [Developer Setup](#developer-setup)
 - [Tools](#tools) · [Privacy](#privacy) · [How it works](#how-it-works)
 - [Known gaps](#known-gaps) · [Contributing](#contributing) · [Legal and safety](#legal-and-safety)
 
@@ -106,6 +106,33 @@ claude mcp add zepp -s user -- uvx zepp-mcp
 
 </details>
 
+<details>
+<summary><b>Antigravity CLI</b></summary>
+
+Create or edit `~/.gemini/config/mcp_config.json` (global, applies to all projects):
+
+```json
+{
+  "mcpServers": {
+    "zepp": {
+      "command": "uvx",
+      "args": ["zepp-mcp"],
+      "env": {
+        "ZEPP_EMAIL": "your-email@example.com",
+        "ZEPP_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+For a single project only, place the same file at `.agents/mcp_config.json` in
+your project root instead.
+
+Restart the Antigravity session afterwards — MCP servers are loaded at startup.
+
+</details>
+
 > [!WARNING]
 > Zepp counts failed logins against a **shared 10-attempt lockout**. This
 > server never retries a failed login, and you shouldn't either. If
@@ -164,6 +191,26 @@ If you're testing your local clone, configure your client to use the local direc
 ```bash
 claude mcp add zepp-local -s user -- uv --directory /path/to/zepp-mcp run zepp-mcp
 ```
+
+</details>
+
+<details>
+<summary><b>Antigravity CLI</b></summary>
+
+Add to `~/.gemini/config/mcp_config.json` (global) or `.agents/mcp_config.json` (workspace):
+
+```json
+{
+  "mcpServers": {
+    "zepp": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/zepp-mcp", "run", "zepp-mcp"]
+    }
+  }
+}
+```
+
+Credentials are read from your local `.env`.
 
 </details>
 
