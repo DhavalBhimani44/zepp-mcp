@@ -166,7 +166,14 @@ This is health data. The design reflects that.
   credential-shaped token. GPS-bearing workouts are excluded entirely — a
   running route starts where you live.
 
-If you contribute a fixture, run `uv run tools/anonymize_fixtures.py` first.
+If you contribute a fixture, run `uv run tools/anonymize_fixtures.py` first,
+and install the pre-push hook — force pushes are blocked on `main`, so a bad
+push cannot be rewritten away:
+
+```bash
+ln -sf ../../tools/hooks/pre-push .git/hooks/pre-push
+```
+
 See [CONTRIBUTING.md](CONTRIBUTING.md#adding-fixtures).
 
 ## How it works
