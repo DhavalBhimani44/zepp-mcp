@@ -255,7 +255,7 @@ time too.
 
 | Gap | Detail |
 | --- | --- |
-| Lap column names | Recovered by inference, though SWOLF is self-checking (`swolf == duration + strokes`) and the decoder reports how often that identity holds. Columns outside the named set are returned raw. |
+| Lap column names | Columns 1, 13 and 14 are confirmed (duration, strokes, SWOLF — see [examples](examples/README.md#how-this-example-resolved-a-documented-gap)). The remaining named columns are inferred, and anything outside the named set is returned raw. |
 | `pool_swim_pace` | Unit unconfirmed; flagged `unit_verified: false`. |
 | `te` / `anaerobic_te` | Probably scaled by 10 (observed 3–43 against a conventional 0.0–5.0 Training Effect scale), but unconfirmed, so reported raw. |
 | VO₂ max, training load | `SPORT_LOAD` and `VO2_MAX` return HTTP 500. |

@@ -372,3 +372,21 @@ def test_a_real_night_still_reports_normally(band_rows):
     assert "main_sleep_recorded" not in block
     assert block["sleep_score"] > 0
     assert block["resting_heart_rate_bpm"] > 0
+
+
+def test_swolf_components_reconstruct_the_session_figure(swim_detail, history_rows):
+    """SWOLF is standardised as seconds-per-length plus strokes-per-length.
+
+    Summing the decoded components across every length and dividing by the
+    length count must reproduce the workout summary's own swolf. This closes
+    the loop: if columns 1 or 13 were mis-mapped, the reconstruction would
+    not land on Zepp's number.
+    """
+    laps = decode.decode_laps(swim_detail["lap"])["laps"]
+    swim = next(r for r in history_rows if str(r["trackid"]) == "1786761306")
+
+    seconds = sum(lap["duration_seconds"] for lap in laps)
+    strokes = sum(lap["strokes"] for lap in laps)
+    reconstructed = (seconds + strokes) / len(laps)
+
+    assert reconstructed == pytest.approx(float(swim["swolf"]), abs=1.0)

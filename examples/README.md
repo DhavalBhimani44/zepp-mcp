@@ -107,9 +107,21 @@ distance makes everything reconcile:
 | Set stroke sum | 392 + 89 = 481 = `total_strokes` |
 
 It also confirmed the column mapping. On a length row, **column 14 = column 1
-+ column 13** — literally the definition of SWOLF, seconds plus strokes. That
-identity is self-checking, so `decode_laps` reports how many laps satisfy it
-and refuses to present the column names as fact when they do not:
++ column 13**. SWOLF is standardised across swim wearables as *seconds for one
+pool length plus strokes taken in that length* — exactly this identity, which
+means the mapping is confirmed against a published definition rather than
+merely inferred.
+
+Three independent routes agree:
+
+1. **Internal identity** — holds on 34 of 36 laps; the rest differ by 1.
+2. **Published definition** — matches the standard SWOLF formula.
+3. **Session reconstruction** — summing the decoded components reproduces
+   Zepp's own summary figure: `(974s + 478 strokes) / 36 lengths = 40.3`
+   against a reported `swolf` of **40**.
+
+The identity is self-checking, so `decode_laps` reports how many laps satisfy
+it and refuses to present the column names as fact when they do not:
 
 ```json
 "swolf_check": {

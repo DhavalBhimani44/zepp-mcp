@@ -271,10 +271,20 @@ def decode_stream(name: str, packed: str) -> dict[str, Any]:
 # Column meanings recovered by cross-referencing a pool-swim capture against
 # its own summary. Unlisted columns are returned by index under raw_columns.
 #
-# Column 14 is SWOLF, and it is self-checking: on every individual length,
-# column 14 == column 1 + column 13, which is the literal definition of SWOLF
-# (seconds for the length plus strokes taken). That identity is asserted in
-# the tests and is what confirms columns 1 and 13.
+# Columns 1, 13 and 14 are CONFIRMED rather than inferred, by three
+# independent routes:
+#
+#  1. Internal identity. On a length row, column 14 == column 1 + column 13,
+#     holding on 34 of 36 laps in the reference swim (the rest differ by 1,
+#     which is rounding).
+#  2. The published definition. SWOLF is standardised across swim wearables
+#     as the time in seconds for one pool length plus the strokes taken in
+#     that length -- exactly the identity above.
+#  3. Session reconstruction. Summing the components and dividing by the
+#     length count reproduces the workout summary's own figure:
+#     (974 s + 478 strokes) / 36 lengths = 40.3 against a reported swolf 40.
+#
+# Lower is better: it penalises both slowing down and adding strokes.
 LAP_COLUMNS: dict[int, str] = {
     0: "lap_index",
     1: "duration_seconds",
