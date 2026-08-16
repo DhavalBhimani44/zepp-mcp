@@ -248,6 +248,11 @@ def zepp_describe_schema() -> dict[str, Any]:
             for name, spec in decode.STREAM_SPECS.items()
         },
         "known_gaps": [
+            "No cycling sport code has been identified -- no ride has been "
+            "recorded yet. A bike ride reports as unknown_sport_<code>; its "
+            "cadence, power and heart rate still appear in the common "
+            "summary, and its remaining metrics under unclassified_metrics. "
+            "Nothing is lost except the sport label.",
             "te and anaerobic_te are reported raw. Observed values run 3-43, "
             "and Training Effect is conventionally a 0.0-5.0 scale, so these "
             "are probably scaled by 10 (43 -> 4.3). Unconfirmed, so they are "

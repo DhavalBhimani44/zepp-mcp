@@ -390,3 +390,69 @@ def test_swolf_components_reconstruct_the_session_figure(swim_detail, history_ro
     reconstructed = (seconds + strokes) / len(laps)
 
     assert reconstructed == pytest.approx(float(swim["swolf"]), abs=1.0)
+
+
+# -- cadence, pace and the cycling path ------------------------------------
+
+def test_cadence_comes_from_frequency_not_the_dead_cadence_field(history_rows):
+    """`avg_cadence` reads 0 on every activity checked; the real cadence is
+    in `avg_frequency`. Verified against steps per minute computed from the
+    row's own step count and duration."""
+    for code in (1, 8):  # run, walk
+        row = next(r for r in history_rows if r["type"] == code)
+        implied = float(row["total_step"]) / float(row["run_time"]) * 60
+        summary = workouts.normalise(row)["summary"]
+        assert summary["avg_cadence_per_minute"] == pytest.approx(implied, abs=1.5)
+        # The dead field must not appear under any name.
+        assert "avg_cadence" not in summary
+        assert "avg_cadence" not in workouts.normalise(row).get("foot", {})
+
+
+def test_negative_cadence_sentinel_is_stripped(history_rows):
+    """Hikes report avg_frequency -60. A negative cadence is not a slow one."""
+    row = next(r for r in history_rows if r["type"] == 22)
+    assert float(row["avg_frequency"]) == -60
+    summary = workouts.normalise(row)["summary"]
+    assert "avg_cadence_per_minute" not in summary
+
+
+def test_zero_pace_and_zero_gait_ratio_are_stripped(history_rows):
+    """A pace of 0 s/m is infinite speed, and a run always has a flight
+    phase -- both zeros mean unmeasured."""
+    row = next(r for r in history_rows if r["type"] == 1)
+    assert float(row["min_pace"]) == 0
+    assert float(row["flight_ratio"]) == 0
+    foot = workouts.normalise(row)["foot"]
+    assert "min_pace" not in foot
+    assert "flight_ratio" not in foot
+    # The measured paces survive.
+    assert foot["avg_pace"] > 0
+
+
+def test_run_pace_matches_its_own_distance_and_duration(history_rows):
+    """avg_pace is seconds per metre, confirmed against the row's own
+    distance and run_time."""
+    row = next(r for r in history_rows if r["type"] == 1)
+    foot = workouts.normalise(row)["foot"]
+    expected = float(row["run_time"]) / float(row["dis"])
+    assert foot["avg_pace"] == pytest.approx(expected, rel=0.001)
+    assert foot["avg_stride_length"] == pytest.approx(
+        float(row["dis"]) / float(row["total_step"]) * 100, abs=2)
+
+
+def test_unmapped_sport_still_surfaces_cadence_power_and_heart_rate(history_rows):
+    """No cycling sport code has been identified. A ride must therefore still
+    report its cadence, power and heart rate through the common block rather
+    than losing them along with the sport name."""
+    row = dict(next(r for r in history_rows if r["type"] == 1))
+    row["type"] = 9999           # stand in for an unidentified bike code
+    row["avg_frequency"] = "85"  # cycling cadence, rpm
+    row["avg_power"] = "210"
+
+    item = workouts.normalise(row)
+    assert item["sport"] == "unknown_sport_9999"
+    assert item["summary"]["avg_cadence_per_minute"] == 85
+    assert item["summary"]["avg_power"] == 210
+    assert item["summary"]["avg_heart_rate"] > 0
+    # Sport-specific numbers are still visible, just not labelled as a sport.
+    assert item["unclassified_metrics"]

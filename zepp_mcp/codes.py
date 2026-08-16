@@ -78,6 +78,19 @@ SENTINELS: dict[str, tuple[float, ...]] = {
     # SpO2 uses TWO markers -- -1 on most activities, 0 on the hikes. A
     # blood oxygen saturation of 0% is not a reading.
     "percentage": (0.0, -1.0),
+    # Cadence / stroke rate. Zepp reports it in `avg_frequency`, verified
+    # against steps-per-minute on a run (153.0 vs 153.3 implied) and a walk
+    # (93.0 vs 94.0). The dedicated `avg_cadence` field is dead -- always 0.
+    #
+    # -60 is a real marker seen on hiking activities. It is not a low
+    # cadence; a negative frequency is not a measurement.
+    "frequency": (0.0, -1.0, -60.0),
+    # A pace of 0 s/m is infinite speed. `min_pace` reports 0 when the watch
+    # did not establish a fastest split.
+    "pace": (0.0, -1.0),
+    # Gait ratios read 0 when unmeasured. A run necessarily has a flight
+    # phase, so a flight ratio of exactly 0 on a run is absence, not data.
+    "ratio": (0.0, -1.0),
     "default": (-1.0,),
 }
 

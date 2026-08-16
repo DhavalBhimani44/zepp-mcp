@@ -26,9 +26,12 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
         "butterfly_length", "medley_length", "back_stroke_length",
         "other_stroke_length",
     ),
+    # `avg_cadence` / `max_cadence` are deliberately absent: they read 0 on
+    # every activity this has been checked against. Real cadence arrives in
+    # `avg_frequency`, which is a COMMON_FIELD.
     "foot": (
-        "total_step", "avg_pace", "max_pace", "min_pace", "avg_cadence",
-        "max_cadence", "avg_stride_length", "elevationGain", "elevationLoss",
+        "total_step", "avg_pace", "max_pace", "min_pace",
+        "avg_stride_length", "elevationGain", "elevationLoss",
         "avg_altitude", "max_altitude", "min_altitude", "landing_time",
         "flight_ratio", "forefoot_ratio", "marathon", "run_time",
     ),
@@ -42,8 +45,12 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
         "altitude_descend", "distance_ascend", "avg_altitude",
         "max_altitude", "min_altitude", "avg_slope", "max_slope",
     ),
+    # No cycling sport code has been identified yet, so this block is not
+    # reachable from _BLOCK_FOR_CODE. It is kept so that the first person to
+    # record a ride and report its code gets a labelled block immediately.
+    # Until then a ride still surfaces cadence, power and heart rate through
+    # COMMON_FIELDS, and everything else under `unclassified_metrics`.
     "ride": (
-        "avg_power", "max_power", "avg_frequency", "max_frequency",
         "avg_slope", "max_slope", "elevationGain", "elevationLoss",
     ),
 }
@@ -57,6 +64,12 @@ COMMON_FIELDS: tuple[str, ...] = (
     "calorie", "dis", "avg_heart_rate", "max_heart_rate", "min_heart_rate",
     "te", "anaerobic_te", "exercise_load", "rpe", "VO2_max", "spo2_max",
     "spo2_min", "avg_temperature", "min_temperature", "max_temperature",
+    # Cadence and power are COMMON, not per-sport. Running, walking and
+    # cycling all report them here, and keeping them common means a bike
+    # ride still surfaces its cadence and power even though no cycling sport
+    # code has been identified yet -- an unmapped sport loses the block name,
+    # not the data.
+    "avg_frequency", "max_frequency", "avg_power", "max_power",
 )
 
 # Altitude readings and elevation totals use DIFFERENT not-applicable
@@ -84,6 +97,12 @@ _TEMPERATURE_FIELDS = frozenset({
     "avg_temperature", "min_temperature", "max_temperature",
 })
 _PERCENTAGE_FIELDS = frozenset({"spo2_max", "spo2_min"})
+_FREQUENCY_FIELDS = frozenset({"avg_frequency", "max_frequency"})
+_PACE_FIELDS = frozenset({"avg_pace", "max_pace", "min_pace"})
+_RATIO_FIELDS = frozenset({
+    "flight_ratio", "forefoot_ratio", "left_flight_ratio",
+    "right_flight_ratio",
+})
 
 # Which sentinel family guards each field. A field left out defaults to -1
 # only, which is why a -274 temperature reached the output on first run.
@@ -92,6 +111,16 @@ _FAMILY_FOR_FIELD: dict[str, str] = {
     **{name: "elevation" for name in _ELEVATION_FIELDS},
     **{name: "temperature" for name in _TEMPERATURE_FIELDS},
     **{name: "percentage" for name in _PERCENTAGE_FIELDS},
+    **{name: "frequency" for name in _FREQUENCY_FIELDS},
+    **{name: "pace" for name in _PACE_FIELDS},
+    **{name: "ratio" for name in _RATIO_FIELDS},
+}
+
+# Renamed on output so the unit travels with the number. `frequency` is an
+# opaque label for what is really cadence in movements per minute.
+_RENAMED_FIELDS: dict[str, str] = {
+    "avg_frequency": "avg_cadence_per_minute",
+    "max_frequency": "max_cadence_per_minute",
 }
 
 
@@ -156,7 +185,8 @@ def _collect(row: dict[str, Any], names: tuple[str, ...]) -> dict[str, Any]:
             if name in _CENTIMETRE_FIELDS:
                 out[_CENTIMETRE_FIELDS[name]] = round(cleaned / 100, 2)
             else:
-                out[name] = int(cleaned) if cleaned.is_integer() else cleaned
+                key = _RENAMED_FIELDS.get(name, name)
+                out[key] = int(cleaned) if cleaned.is_integer() else cleaned
             continue
         if isinstance(value, str) and value.strip():
             out[name] = value
