@@ -174,3 +174,55 @@ easiest to synthesise convincingly.
 | Spec §9 | Fixture promotion needs a GPS decision before anything is committed |
 | Plan Task 3 | Never loop login variants — `max_attempts=10` is shared and region is ignored anyway |
 | Plan Task 6 | `trackid` is `str`, and the field is `end_time` not `endtime` (this crashed the first run) |
+
+---
+
+## Training plans and Zepp Coach — probed 2026-08-17
+
+**No training-calendar or coach endpoint was found**, and the negative result
+needs its controls stated, because two of the three signals turned out to be
+worthless on their own.
+
+### What was probed
+
+Thirteen candidate routes across `/v1/sport/`, `/v1/training/`, `/v1/course/`,
+`/v2/users/me/`, `/v2/watch/users/{uid}/` and `/v1/coach/`, plus three
+`WatchSportStatistics` names and four event types.
+
+### 404 vs 400 vs 500 on WatchSportStatistics
+
+| Statistic | HTTP | Meaning |
+|---|---|---|
+| `ZZZ_NOT_REAL` (control) | 400 | unknown name |
+| `TRAINING_LOAD`, `RECOVERY_TIME`, `TRAINING_STATUS` | 400 | **unknown name — same as the control** |
+| `SPORT_LOAD`, `VO2_MAX` | 500 | recognised name, server-side failure |
+
+The control is what makes this readable. A 400 here means "no such statistic",
+so the three training names carry no evidence of existing. The 500s are the
+interesting ones: those two names ARE recognised and are broken server-side.
+
+**Discriminator worth reusing:** on `WatchSportStatistics`, 400 means the name
+is unknown and 500 means the name is real but failing.
+
+### The events API cannot answer this question at all
+
+`eventType=TrainingPlan`, `trainingLoad` and `SportPlan` each returned an
+empty HTTP 200 — and so did a deliberately fabricated `eventType=ZZZ_NOT_REAL`.
+
+An empty 200 from `/v2/users/me/events` is therefore **indistinguishable
+between "no such event type" and "no data for this range"**. No conclusion
+about training plans can be drawn from it in either direction. This is spec
+section 6's empty-200 rule meeting a live case: the response is a fault and an
+absence wearing the same clothes.
+
+### The schema does support plans
+
+Every workout row carries `runningProgram`, `dailyPlanFinished`,
+`course_title`, `coachInsight`, `totalInsight`, `degreeOfCompletion`,
+`runningType` and `scoringMethod`. On this account all are empty or zero,
+consistent with no plan ever having been active.
+
+**The likely route to plan data is therefore the workout row itself, not a
+separate endpoint.** If someone activates a Zepp Coach plan and completes a
+planned session, those fields should populate. A capture of such a workout
+would settle it, and is a genuinely useful contribution.

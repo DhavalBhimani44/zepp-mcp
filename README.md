@@ -346,6 +346,7 @@ time too.
 | Multisport | `parent_trackid` / `child_list` handling is built but untested; no triathlon has been recorded yet. |
 | Running depth | Confirmed on a single run: pace (s/m), stride length (cm), cadence and power all reconcile against the row's own distance, duration and step count. More runs would broaden that. |
 | GPS decoding | Untested. The corpus deliberately excludes GPS-bearing workouts. |
+| Training plans / Zepp Coach | No endpoint found across 13 candidate routes ([details](docs/api-findings.md#training-plans-and-zepp-coach--probed-2026-08-17)). Workout rows do carry `coachInsight`, `course_title` and `degreeOfCompletion`, all empty on an account with no plan — so plan data likely arrives through the workout row rather than a separate endpoint. A capture from an active plan would confirm it. |
 | Metrics without tools | PAI, SpO₂, stress, HRV, respiratory rate, readiness, Body Charge and weight all return data but are reachable only via `zepp_raw_request`. |
 
 Help with any of these is welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
