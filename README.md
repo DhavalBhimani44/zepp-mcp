@@ -4,12 +4,16 @@
 
 **Read your Zepp / Amazfit health and workout data from any MCP client.**
 
+**🖥️ 100% local · stdio transport · no server, no cloud relay, no third party**
+
 [![CI](https://github.com/DhavalBhimani44/zepp-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/DhavalBhimani44/zepp-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-server-000000.svg)](https://modelcontextprotocol.io)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![Runs locally](https://img.shields.io/badge/runs-100%25%20locally-success.svg)](#architecture)
+[![Transport: stdio](https://img.shields.io/badge/transport-stdio-informational.svg)](#architecture)
 
 </div>
 
@@ -33,6 +37,22 @@ worse on days I trained hard?"* and get answers from your own watch data.
 Built on the private Zepp mobile API, with every decoder verified against
 real captured responses.
 
+> [!NOTE]
+> ### This runs entirely on your own machine
+>
+> `zepp-mcp` is a **local stdio server**. Your MCP client launches it as a
+> child process on your laptop and talks to it over stdin/stdout — the same
+> way it runs any local command.
+>
+> - **No hosted service.** There is nothing to sign up for and no backend I operate.
+> - **No cloud relay.** Your health data never passes through any server but Zepp's own.
+> - **No open port.** stdio only — nothing listens on the network.
+> - **Your credentials stay in a local `.env`**, never in a client config file.
+> - **The only outbound connection** is HTTPS from your machine to Zepp's API,
+>   read-only, exactly as the Zepp app does it.
+>
+> See [Architecture](#architecture) for the full picture.
+
 > [!IMPORTANT]
 > **Unofficial.** This project is not affiliated with, endorsed by, or
 > supported by Zepp Health or Huami. It talks to a private API that can change
@@ -41,7 +61,7 @@ real captured responses.
 ## Contents
 
 - [Features](#features) · [Setup for Users](#setup-for-users) · [Developer Setup](#developer-setup)
-- [Tools](#tools) · [Privacy](#privacy) · [How it works](#how-it-works)
+- [Architecture](#architecture) · [Tools](#tools) · [Privacy](#privacy) · [How it works](#how-it-works)
 - [Known gaps](#known-gaps) · [Contributing](#contributing) · [Legal and safety](#legal-and-safety)
 
 ## Features
@@ -59,6 +79,8 @@ real captured responses.
   confirmed absence.
 - **Nothing stored.** No health data touches disk. Only the API token is
   cached, so restarts don't trigger a fresh login.
+- **Local by construction.** A stdio child process on your machine. No
+  hosted service, no relay, no listening port.
 
 ## Setup for Users
 
@@ -214,6 +236,56 @@ Credentials are read from your local `.env`.
 
 </details>
 
+## Architecture
+
+Everything inside the dashed box runs on your laptop. There is no server in
+the middle, and the single outbound connection is the same HTTPS call the
+Zepp app itself makes.
+
+```mermaid
+flowchart TB
+    subgraph machine["YOUR MACHINE - the whole system lives here"]
+        direction TB
+
+        client["<b>MCP Client</b><br/>Claude Code · Claude Desktop<br/>any MCP host"]
+
+        subgraph proc["zepp-mcp · local child process"]
+            direction TB
+            tools["<b>server.py</b><br/>8 MCP tools"]
+            norm["<b>workouts.py · decode.py · codes.py</b><br/>stream decoding · lap splitting<br/>sentinel stripping · unit attribution"]
+            http["<b>client.py</b><br/>empty-200 classifier · re-auth once"]
+            auth["<b>auth.py</b><br/>password login · region discovery"]
+            tools --> norm
+            norm --> http
+            http --> auth
+        end
+
+        env["<b>.env</b><br/>credentials · mode 0600"]
+        cache[("<b>~/.zepp-mcp/token.json</b><br/>API token only · mode 0600<br/>no health data on disk")]
+    end
+
+    zepp["<b>Zepp Cloud API</b><br/>api-mifit-region.zepp.com"]
+
+    client <-->|"<b>stdio</b> · JSON-RPC over stdin/stdout<br/>no network · no open port"| tools
+    env -.->|"read at startup"| auth
+    auth -.->|"token only"| cache
+    http <-->|"<b>HTTPS · read-only</b><br/>the only outbound connection"| zepp
+
+```
+
+**Reading the diagram**
+
+| Boundary | What crosses it |
+| --- | --- |
+| Client ↔ server | JSON-RPC over **stdio**. A pipe between two processes on your machine — not a socket, not a port. |
+| Server ↔ Zepp | **HTTPS, read-only.** Your credentials and your data go nowhere else. The server never writes to your Zepp account. |
+| Server ↔ disk | **The API token, and nothing else.** No workout, sleep or heart-rate data is ever persisted. |
+
+**Lifecycle.** You never start the server. Your MCP client spawns it when it
+launches, speaks JSON-RPC over the pipe, and kills it on exit. Every session
+gets a fresh process — which is exactly why the token is cached, so a restart
+does not mean a fresh login against Zepp's shared 10-attempt lockout.
+
 ## Tools
 
 | Tool | Returns |
@@ -231,6 +303,8 @@ Credentials are read from your local `.env`.
 
 This is health data. The design reflects that.
 
+- **Nothing is hosted.** `zepp-mcp` is a local stdio process. There is no
+  backend I run, no account to create, and no relay your data passes through.
 - **No health data is written to disk.** Every call fetches live.
 - **Only the API token is cached**, at `~/.zepp-mcp/token.json` (mode `0600`).
   Set `ZEPP_TOKEN_CACHE=off` to disable and log in every time.
@@ -396,6 +470,9 @@ confirmation of the units flagged above.
 - **No warranty.** See [LICENSE](LICENSE).
 
 ## Security
+
+The threat surface is deliberately small: a local process with no listening
+port, one outbound HTTPS destination, and a single credential file.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md). Please don't open a
 public issue for anything credential-related.
