@@ -565,3 +565,62 @@ def test_run_without_an_estimate_reports_no_threshold_field():
     foot = workouts.normalise(row).get("foot", {})
     assert "lactate_threshold_hr_bpm" not in foot
     assert "lactate_threshold_pace_sec_per_km" not in foot
+
+
+# -- cycling ---------------------------------------------------------------
+
+def _ride_row():
+    """A real code-9 ride row, trimmed to the fields under test."""
+    return {
+        "type": 9, "trackid": "1788076514", "end_time": "1788076998",
+        "syncedTimezone": "Asia/Kolkata", "dis": "2352.0", "run_time": "484",
+        "calorie": "68.0", "avg_heart_rate": "122.0", "max_heart_rate": "152",
+        "avg_pace": "0.2057", "avg_slope": "0", "max_slope": "-1",
+        "elevationGain": "1192", "elevationLoss": "982",
+        "altitude_ascend": "11", "altitude_descend": "9",
+        "avg_altitude": "132.0", "max_altitude": "138", "min_altitude": "130",
+        "avg_power": "-1", "avg_frequency": "0.0",
+        "swolf": "-1", "total_strokes": "-1", "total_step": "0",
+        "pb": '{"ride_longest_time":484,"ride_most_up_m":10.5056,'
+              '"ride_furthest_km":2.35294}',
+    }
+
+
+def test_sport_code_9_is_cycling_and_gets_the_ride_block():
+    item = workouts.normalise(_ride_row())
+    assert item["sport"] == "outdoor_cycling"
+    assert item["sport_code"] == 9
+    assert "ride" in item
+    # A ride must never carry swim or step metrics.
+    assert "swim" not in item
+    assert "swolf" not in json.dumps(item)
+    assert "total_step" not in item["ride"]
+
+
+def test_ride_elevation_is_converted_from_centimetres():
+    """elevationGain 1192 is centimetres, and the row's own altitude_ascend
+    of 11 m is the cross-check."""
+    item = workouts.normalise(_ride_row())
+    ride = item["ride"]
+    assert ride["elevation_gain_metres"] == 11.92
+    assert ride["elevation_loss_metres"] == 9.82
+    assert abs(ride["elevation_gain_metres"] - ride["altitude_ascend"]) < 1.2
+    assert "elevationGain" not in ride
+
+
+def test_ride_without_sensors_omits_power_and_cadence():
+    """A bike with no power meter or cadence sensor reports -1 and 0. Neither
+    is a reading of zero watts or zero rpm."""
+    summary = workouts.normalise(_ride_row())["summary"]
+    assert "avg_power" not in summary
+    assert "avg_cadence_per_minute" not in summary
+
+
+def test_personal_bests_are_decoded_from_nested_json():
+    """`pb` is JSON inside JSON. Its ride_-prefixed keys are what identified
+    sport code 9 as cycling from the payload rather than by inference."""
+    item = workouts.normalise(_ride_row())
+    best = item["personal_bests"]
+    assert best["ride_furthest_km"] == pytest.approx(2.35294)
+    assert best["ride_longest_time"] == 484
+    assert all(k.startswith("ride_") for k in best)

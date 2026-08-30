@@ -40,6 +40,10 @@ SLEEP_SUMMARY_FIELDS: dict[str, str] = {
 #
 #  1: outdoor running     3363 m in 1190 s = 2.83 m/s, GPS track
 #  8: walking             1064 m in 909 s = 1.17 m/s at 94 steps/min
+#  9: outdoor cycling     2352 m in 484 s = 17.5 km/h. Confirmed by the
+#                         payload itself, not inferred: the row's `pb`
+#                         object is keyed ride_longest_time,
+#                         ride_most_up_m and ride_furthest_km.
 # 14: pool swimming       carries swolf / swim_pool_length / stroke counts
 # 22: hiking              2298-2624 m over 76-100 min, high calorie burn
 #                         with a step count -- slow ground speed, hard effort
@@ -51,6 +55,7 @@ SLEEP_SUMMARY_FIELDS: dict[str, str] = {
 SPORT_CODES: dict[int, str] = {
     1: "outdoor_running",
     8: "walking",
+    9: "outdoor_cycling",
     14: "pool_swimming",
     22: "hiking",
     52: "strength_training",

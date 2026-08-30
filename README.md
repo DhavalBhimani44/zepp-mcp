@@ -66,8 +66,8 @@ real captured responses.
 
 ## Features
 
-- **All sports in one call.** Swimming, running, walking, hiking and strength
-  work, each with its own metrics — SWOLF and stroke counts for swims, pace
+- **All sports in one call.** Swimming, running, cycling, walking, hiking and
+  strength work, each with its own metrics — SWOLF and stroke counts for swims, pace
   and cadence for runs, set counts for the gym.
 - **Sleep with all four stages.** Light, deep, REM and awake, not just the
   two most implementations report.
@@ -419,7 +419,6 @@ time too.
 | `pool_swim_pace` | Unit unconfirmed; flagged `unit_verified: false`. |
 | VO₂ max, training load | `SPORT_LOAD` and `VO2_MAX` return HTTP 500. |
 | Some endpoints | `manualData`, `bloodPressure` and `heartRate` return HTTP 400 — they need parameters not yet worked out. |
-| **Cycling** | **No cycling sport code identified** — no ride has been recorded against this code yet. A ride will report as `unknown_sport_<code>`; cadence, power and heart rate still surface via the common block, and the rest under `unclassified_metrics`. Report your code in an issue and it becomes a one-line fix. |
 | Multisport | `parent_trackid` / `child_list` handling is built but untested; no triathlon has been recorded yet. |
 | Running depth | Confirmed on a single run: pace (s/m), stride length (cm), cadence and power all reconcile against the row's own distance, duration and step count. More runs would broaden that. |
 | GPS decoding | Untested. The corpus deliberately excludes GPS-bearing workouts. |

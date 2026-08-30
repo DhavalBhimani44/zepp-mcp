@@ -11,6 +11,7 @@ untouched row under `raw` for anything not covered.
 from __future__ import annotations
 
 import datetime as dt
+import json
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -56,19 +57,22 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
         "altitude_descend", "distance_ascend", "avg_altitude",
         "max_altitude", "min_altitude", "avg_slope", "max_slope",
     ),
-    # No cycling sport code has been identified yet, so this block is not
-    # reachable from _BLOCK_FOR_CODE. It is kept so that the first person to
-    # record a ride and report its code gets a labelled block immediately.
-    # Until then a ride still surfaces cadence, power and heart rate through
-    # COMMON_FIELDS, and everything else under `unclassified_metrics`.
+    # Sport code 9. Power and cadence come through COMMON_FIELDS and are
+    # absent on a bike without the corresponding sensors -- `avg_power` is
+    # simply not in the payload, rather than zero.
     "ride": (
-        "avg_slope", "max_slope", "elevationGain", "elevationLoss",
+        "avg_pace", "max_pace", "run_time",
+        "avg_slope", "max_slope",
+        "elevationGain", "elevationLoss",
+        "altitude_ascend", "altitude_descend",
+        "distance_ascend", "climb_dis_descend",
+        "avg_altitude", "max_altitude", "min_altitude",
     ),
 }
 
 # Which sport-specific block applies to which numeric type code.
 _BLOCK_FOR_CODE: dict[int, str] = {
-    1: "foot", 8: "foot", 14: "swim", 22: "hike", 52: "strength",
+    1: "foot", 8: "foot", 9: "ride", 14: "swim", 22: "hike", 52: "strength",
 }
 
 COMMON_FIELDS: tuple[str, ...] = (
@@ -259,6 +263,18 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
             detail = _collect(row, fields)
             if detail:
                 out.setdefault("unclassified_metrics", {})[name] = detail
+
+    # `pb` is a personal-best object arriving as JSON nested inside JSON.
+    # Its keys are sport-prefixed (ride_furthest_km, ride_most_up_m), which
+    # is what confirmed sport code 9 as cycling.
+    best = row.get("pb")
+    if isinstance(best, str) and best.strip():
+        try:
+            best = json.loads(best)
+        except ValueError:
+            best = None
+    if isinstance(best, dict) and best:
+        out["personal_bests"] = best
 
     # `heart_range` is a time-in-zone breakdown on the index row itself, so
     # it costs no extra request. Zone boundaries are the watch's own.
