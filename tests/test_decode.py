@@ -501,3 +501,67 @@ def test_training_effect_sentinel_does_not_become_a_negative_score():
     summary = workouts.normalise(row)["summary"]
     assert "aerobic_training_effect" not in summary
     assert "anaerobic_training_effect" not in summary
+
+
+# -- lactate threshold and heart-rate zones --------------------------------
+
+def test_heart_zones_decode_into_bounded_bands():
+    """`heart_range` is `seconds,upper_bpm` pairs. Boundaries chain: each
+    zone's lower bound is the previous zone's upper bound."""
+    zones = decode.decode_heart_zones(
+        "5,107;50,134;21,146;777,154;1505,164;1551,180")
+    assert zones["zone_count"] == 6
+    assert zones["total_seconds"] == 3909
+
+    bands = zones["zones"]
+    assert bands[0]["lower_bpm"] == 0
+    assert bands[0]["upper_bpm"] == 107
+    for previous, current in zip(bands, bands[1:]):
+        assert current["lower_bpm"] == previous["upper_bpm"]
+    assert sum(b["seconds"] for b in bands) == zones["total_seconds"]
+    assert round(sum(b["percent"] for b in bands)) == 100
+
+
+def test_heart_zones_reject_a_malformed_stream():
+    result = decode.decode_heart_zones("5;50,134")
+    assert "zones" not in result
+    assert "unrecognised" in result["note"]
+
+
+def test_lactate_threshold_fields_are_renamed_with_units():
+    """`lactateThresholdPace: 325` is seconds per KILOMETRE while `avg_pace`
+    is seconds per METRE. Under similar names they are 1000x apart, so the
+    unit has to travel in the key."""
+    row = {
+        "type": 1, "trackid": "1788056390", "end_time": "1788060311",
+        "syncedTimezone": "Asia/Kolkata",
+        "lactateThresholdHr": "173", "lactateThresholdPace": "325",
+        "avgEquivPace": "462", "avg_pace": "0.465386", "dis": "8425.0",
+    }
+    foot = workouts.normalise(row)["foot"]
+    assert foot["lactate_threshold_hr_bpm"] == 173
+    assert foot["lactate_threshold_pace_sec_per_km"] == 325
+    assert foot["avg_pace_sec_per_km"] == 462
+    # Raw names must not survive alongside the renamed ones.
+    assert "lactateThresholdHr" not in foot
+    assert "avgEquivPace" not in foot
+
+
+def test_equiv_pace_is_seconds_per_km_consistent_with_avg_pace():
+    """avgEquivPace must equal avg_pace (s/m) x 1000, which is what proves
+    the unit rather than assuming it."""
+    row = {"type": 1, "trackid": "1788056390",
+           "avg_pace": "0.465386", "avgEquivPace": "462"}
+    foot = workouts.normalise(row)["foot"]
+    assert foot["avg_pace_sec_per_km"] == pytest.approx(
+        foot["avg_pace"] * 1000, abs=8)
+
+
+def test_run_without_an_estimate_reports_no_threshold_field():
+    """A run the watch could not estimate from carries no threshold fields
+    at all. Absence must stay absence, not become a zero."""
+    row = {"type": 1, "trackid": "1786191738", "dis": "3363.0",
+           "lactateThresholdUpdateFlag": "0"}
+    foot = workouts.normalise(row).get("foot", {})
+    assert "lactate_threshold_hr_bpm" not in foot
+    assert "lactate_threshold_pace_sec_per_km" not in foot

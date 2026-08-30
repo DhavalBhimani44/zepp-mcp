@@ -264,6 +264,51 @@ def decode_stream(name: str, packed: str) -> dict[str, Any]:
     }
 
 
+def decode_heart_zones(packed: str) -> dict[str, Any]:
+    """Decode `heart_range`: time spent in each heart-rate zone.
+
+    Format is `seconds,upper_bpm;seconds,upper_bpm;...` where each pair is
+    the time spent below that boundary and above the previous one. It lives
+    on the workout INDEX row, not the detail payload, so a zone breakdown
+    costs no extra request.
+
+    Verified on a run whose zone seconds total 3909 against a reported
+    run_time of 3921 -- 0.3% apart, consistent with unrecorded gaps rather
+    than a different quantity.
+
+    Zone boundaries are the watch's own personalised ones. They are NOT
+    recomputed here, because a zone model derived from a guessed maximum
+    heart rate would disagree with what the athlete sees in the app.
+    """
+    pairs: list[tuple[int, int]] = []
+    for chunk in packed.strip().rstrip(";").split(";"):
+        if not chunk:
+            continue
+        parts = chunk.split(",")
+        if len(parts) != 2:
+            return {"note": "unrecognised heart_range format", "raw": packed}
+        try:
+            pairs.append((int(float(parts[0])), int(float(parts[1]))))
+        except ValueError:
+            return {"note": "unrecognised heart_range format", "raw": packed}
+
+    total = sum(seconds for seconds, _ in pairs)
+    if not total:
+        return {"note": "no time recorded in any zone"}
+
+    zones = []
+    lower = 0
+    for seconds, upper in pairs:
+        zones.append({
+            "lower_bpm": lower,
+            "upper_bpm": upper,
+            "seconds": seconds,
+            "percent": round(seconds / total * 100, 1),
+        })
+        lower = upper
+    return {"total_seconds": total, "zone_count": len(zones), "zones": zones}
+
+
 # --------------------------------------------------------------------------
 # Laps
 # --------------------------------------------------------------------------

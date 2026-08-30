@@ -41,6 +41,7 @@ EXPECTED_TOOLS = {
     "zepp_list_workouts",
     "zepp_raw_request",
     "zepp_sleep",
+    "zepp_training_thresholds",
     "zepp_workout_detail",
 }
 

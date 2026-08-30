@@ -14,6 +14,7 @@ import datetime as dt
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from . import decode
 from .codes import (TRAINING_EFFECT_SCALE, clean, sport_name,
                     training_effect_band)
 
@@ -31,6 +32,15 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
     # every activity this has been checked against. Real cadence arrives in
     # `avg_frequency`, which is a COMMON_FIELD.
     "foot": (
+        # Lactate threshold. Only present when lactateThresholdUpdateFlag is
+        # non-zero -- on a run where the watch has not estimated it, the
+        # fields are ABSENT from the payload entirely rather than sentinelled.
+        "lactateThresholdHr", "lactateThresholdPace",
+        "lactateThresholdUpdateFlag",
+        # Pace in seconds per KILOMETRE, which is how runners actually read
+        # it. Confirmed against avg_pace (s/m) x 1000 on three runs:
+        # 353.8/425.0/465.4 computed against 354/424/462 reported.
+        "avgEquivPace", "bestEquivPace",
         "total_step", "avg_pace", "max_pace", "min_pace",
         "avg_stride_length", "elevationGain", "elevationLoss",
         "avg_altitude", "max_altitude", "min_altitude", "landing_time",
@@ -122,6 +132,13 @@ _FAMILY_FOR_FIELD: dict[str, str] = {
 _RENAMED_FIELDS: dict[str, str] = {
     "avg_frequency": "avg_cadence_per_minute",
     "max_frequency": "max_cadence_per_minute",
+    # Units in the name: `lactateThresholdPace: 325` is meaningless until you
+    # know it is seconds per kilometre (5:25/km), and `avg_pace` is seconds
+    # per METRE, so the two are a thousand-fold apart under similar names.
+    "lactateThresholdHr": "lactate_threshold_hr_bpm",
+    "lactateThresholdPace": "lactate_threshold_pace_sec_per_km",
+    "avgEquivPace": "avg_pace_sec_per_km",
+    "bestEquivPace": "best_pace_sec_per_km",
 }
 
 # Training Effect arrives at ten times its displayed value. Scaled and
@@ -242,6 +259,14 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
             detail = _collect(row, fields)
             if detail:
                 out.setdefault("unclassified_metrics", {})[name] = detail
+
+    # `heart_range` is a time-in-zone breakdown on the index row itself, so
+    # it costs no extra request. Zone boundaries are the watch's own.
+    zones = row.get("heart_range")
+    if isinstance(zones, str) and zones.strip():
+        decoded = decode.decode_heart_zones(zones)
+        if decoded.get("zones"):
+            out["heart_rate_zones"] = decoded
 
     parent = row.get("parent_trackid")
     children = row.get("child_list")

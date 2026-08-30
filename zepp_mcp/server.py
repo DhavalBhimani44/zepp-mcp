@@ -229,6 +229,88 @@ def zepp_workout_detail(
 
 
 @server.tool(
+    description="Lactate threshold heart rate and pace, with how they have "
+                "changed over time. LTHR anchors every training zone, so it "
+                "matters more than any single session."
+)
+def zepp_training_thresholds(
+    from_date: str | None = None,
+    to_date: str | None = None,
+) -> dict[str, Any]:
+    """Args: from_date/to_date as YYYY-MM-DD. Defaults to the last 180 days.
+
+    The watch estimates lactate threshold from qualifying runs only. Runs
+    where it did not produce an estimate carry no threshold fields at all,
+    and are reported separately rather than counted as a zero."""
+    try:
+        start, end = _range(from_date, to_date, days=180)
+        outcome = api.workout_history(_get_client(), start, end)
+    except Exception as exc:
+        return _fail(exc)
+
+    if outcome.status != "ok":
+        return outcome.as_dict()
+
+    estimates, without = [], 0
+    for row in api.parse_rows(outcome.data):
+        item = workouts.normalise(row)
+        foot = item.get("foot") or {}
+        lthr = foot.get("lactate_threshold_hr_bpm")
+        if lthr is None:
+            if item["sport"] == "outdoor_running":
+                without += 1
+            continue
+        entry = {
+            "date": (item["start_local"] or "")[:10],
+            "track_id": item["track_id"],
+            "lactate_threshold_hr_bpm": lthr,
+            "lactate_threshold_pace_sec_per_km":
+                foot.get("lactate_threshold_pace_sec_per_km"),
+        }
+        pace = entry["lactate_threshold_pace_sec_per_km"]
+        if pace:
+            entry["lactate_threshold_pace"] = f"{int(pace) // 60}:{int(pace) % 60:02d}/km"
+        vo2 = item["summary"].get("VO2_max")
+        if vo2:
+            entry["vo2_max"] = vo2
+        estimates.append(entry)
+
+    estimates.sort(key=lambda e: e["date"])
+    if not estimates:
+        return {
+            "status": "no_data",
+            "range": {"from": start, "to": end},
+            "runs_without_an_estimate": without,
+            "note": "No run in this range carried a lactate threshold "
+                    "estimate. The watch only produces one from qualifying "
+                    "runs -- typically a sustained hard effort. This is "
+                    "absence of an estimate, not a threshold of zero.",
+        }
+
+    latest = estimates[-1]
+    result: dict[str, Any] = {
+        "status": "ok",
+        "range": {"from": start, "to": end},
+        "current": latest,
+        "estimate_count": len(estimates),
+        "runs_without_an_estimate": without,
+        "history": estimates,
+        "note": "Zone boundaries in zepp_list_workouts are the watch's own "
+                "personalised ones. They are reported as measured and are "
+                "not recomputed from this threshold.",
+    }
+    if len(estimates) > 1:
+        first = estimates[0]
+        result["change"] = {
+            "hr_bpm": latest["lactate_threshold_hr_bpm"]
+                      - first["lactate_threshold_hr_bpm"],
+            "from_date": first["date"],
+            "to_date": latest["date"],
+        }
+    return result
+
+
+@server.tool(
     description="Explain what this server knows: which sport codes are "
                 "identified, which stream units are verified, and where the "
                 "decoding is still uncertain."

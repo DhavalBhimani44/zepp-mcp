@@ -73,6 +73,8 @@ real captured responses.
   two most implementations report.
 - **Per-minute heart rate**, with no-reading markers preserved as `null`
   rather than dropped.
+- **Lactate threshold HR and pace**, tracked over time — the anchor for every
+  training zone — plus per-run time-in-zone distribution.
 - **Lap and stream decoding** for individual workouts.
 - **Honest about uncertainty.** Unverified units are flagged, unknown sport
   codes are named as unknown, and an empty response is never reported as
@@ -295,6 +297,7 @@ does not mean a fresh login against Zepp's shared 10-attempt lockout.
 | `zepp_heart_rate` | Per-minute heart rate for a day, plus statistics |
 | `zepp_list_workouts` | All workouts, all sports, with sport-specific metrics |
 | `zepp_workout_detail` | Laps, time-series streams and GPS for one workout |
+| `zepp_training_thresholds` | Lactate threshold HR and pace, with how they've moved over time |
 | `zepp_describe_schema` | What the server knows, and where decoding is uncertain |
 | `zepp_raw_request` | Arbitrary GET, for endpoints not modelled yet |
 | `zepp_auth_status` | Token expiry and region host |
