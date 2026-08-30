@@ -66,8 +66,8 @@ real captured responses.
 
 ## Features
 
-- **All sports in one call.** Swimming, running, cycling, walking, hiking and
-  strength work, each with its own metrics — SWOLF and stroke counts for swims, pace
+- **All sports in one call.** Swimming, running, cycling, football, walking,
+  hiking and strength work, each with its own metrics — SWOLF and stroke counts for swims, pace
   and cadence for runs, set counts for the gym.
 - **Sleep with all four stages.** Light, deep, REM and awake, not just the
   two most implementations report.

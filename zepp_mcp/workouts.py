@@ -57,6 +57,14 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
         "altitude_descend", "distance_ascend", "avg_altitude",
         "max_altitude", "min_altitude", "avg_slope", "max_slope",
     ),
+    # Stop-start field sports. Football (code 18) records distance, pace and
+    # duration but no step count, no cadence and no altitude -- the watch
+    # reports altitude as -20000 and elevation as -100 throughout, both
+    # sentinels. Everything that matters for this sport is heart rate, which
+    # lives in COMMON_FIELDS and the zone breakdown.
+    "field_sport": (
+        "avg_pace", "max_pace", "run_time", "total_step",
+    ),
     # Sport code 9. Power and cadence come through COMMON_FIELDS and are
     # absent on a bike without the corresponding sensors -- `avg_power` is
     # simply not in the payload, rather than zero.
@@ -72,7 +80,8 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
 
 # Which sport-specific block applies to which numeric type code.
 _BLOCK_FOR_CODE: dict[int, str] = {
-    1: "foot", 8: "foot", 9: "ride", 14: "swim", 22: "hike", 52: "strength",
+    1: "foot", 8: "foot", 9: "ride", 14: "swim", 18: "field_sport",
+    22: "hike", 52: "strength",
 }
 
 COMMON_FIELDS: tuple[str, ...] = (
@@ -112,6 +121,7 @@ _TEMPERATURE_FIELDS = frozenset({
     "avg_temperature", "min_temperature", "max_temperature",
 })
 _PERCENTAGE_FIELDS = frozenset({"spo2_max", "spo2_min"})
+_COUNT_FIELDS = frozenset({"total_step", "total_strokes", "total_trips"})
 _FREQUENCY_FIELDS = frozenset({"avg_frequency", "max_frequency"})
 _PACE_FIELDS = frozenset({"avg_pace", "max_pace", "min_pace"})
 _RATIO_FIELDS = frozenset({
@@ -126,6 +136,7 @@ _FAMILY_FOR_FIELD: dict[str, str] = {
     **{name: "elevation" for name in _ELEVATION_FIELDS},
     **{name: "temperature" for name in _TEMPERATURE_FIELDS},
     **{name: "percentage" for name in _PERCENTAGE_FIELDS},
+    **{name: "count" for name in _COUNT_FIELDS},
     **{name: "frequency" for name in _FREQUENCY_FIELDS},
     **{name: "pace" for name in _PACE_FIELDS},
     **{name: "ratio" for name in _RATIO_FIELDS},

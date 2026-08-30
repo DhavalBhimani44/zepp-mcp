@@ -45,6 +45,11 @@ SLEEP_SUMMARY_FIELDS: dict[str, str] = {
 #                         object is keyed ride_longest_time,
 #                         ride_most_up_m and ride_furthest_km.
 # 14: pool swimming       carries swolf / swim_pool_length / stroke counts
+# 18: football            confirmed by the account owner. ~1 m/s ground speed
+#                         over 79-80 min at avg HR 153-177 -- low distance for
+#                         an enormous cardiac cost, which is the signature of
+#                         a stop-start field sport. Carries no step count and
+#                         no altitude.
 # 22: hiking              2298-2624 m over 76-100 min, high calorie burn
 #                         with a step count -- slow ground speed, hard effort
 # 52: strength training   zero distance, total_group = set count, plus a
@@ -57,6 +62,7 @@ SPORT_CODES: dict[int, str] = {
     8: "walking",
     9: "outdoor_cycling",
     14: "pool_swimming",
+    18: "football",
     22: "hiking",
     52: "strength_training",
 }
@@ -96,6 +102,10 @@ SENTINELS: dict[str, tuple[float, ...]] = {
     # Gait ratios read 0 when unmeasured. A run necessarily has a flight
     # phase, so a flight ratio of exactly 0 on a run is absence, not data.
     "ratio": (0.0, -1.0),
+    # Step counts. Football records 0 steps across 79 minutes of play, which
+    # is the watch declining to count them in that sport mode rather than a
+    # player who never moved.
+    "count": (0.0, -1.0),
     "default": (-1.0,),
 }
 

@@ -624,3 +624,53 @@ def test_personal_bests_are_decoded_from_nested_json():
     assert best["ride_furthest_km"] == pytest.approx(2.35294)
     assert best["ride_longest_time"] == 484
     assert all(k.startswith("ride_") for k in best)
+
+
+# -- football --------------------------------------------------------------
+
+def _football_row():
+    """A real code-18 row: high cardiac cost, almost no ground covered."""
+    return {
+        "type": 18, "trackid": "1787415409", "end_time": "1787420155",
+        "syncedTimezone": "Asia/Kolkata", "dis": "5054.0", "run_time": "4746",
+        "calorie": "1199.0", "avg_heart_rate": "177.0",
+        "max_heart_rate": "200", "min_heart_rate": "103",
+        "te": "50", "anaerobic_te": "41", "exercise_load": "447", "rpe": "4",
+        "avg_pace": "0.939017", "max_pace": "0.248", "total_step": "0",
+        "elevationGain": "-100", "elevationLoss": "-100",
+        "max_altitude": "-20000", "min_altitude": "-20000",
+        "heart_range": "17,111;25,139;130,151;114,159;776,170;3682,187",
+    }
+
+
+def test_sport_code_18_is_football():
+    item = workouts.normalise(_football_row())
+    assert item["sport"] == "football"
+    assert item["sport_code"] == 18
+    assert "field_sport" in item
+    assert "foot" not in item and "swim" not in item
+
+
+def test_football_zero_step_count_is_treated_as_absence():
+    """The watch records 0 steps across 79 minutes of football. That is it
+    declining to count, not a player who never moved."""
+    block = workouts.normalise(_football_row())["field_sport"]
+    assert "total_step" not in block
+    assert block["avg_pace"] > 0
+
+
+def test_football_strips_the_altitude_and_elevation_sentinels():
+    """Altitude reads -20000 and elevation -100 throughout, different markers
+    in the same row."""
+    item = workouts.normalise(_football_row())
+    text = json.dumps(item)
+    assert "-20000" not in text
+    assert "-100" not in text
+
+
+def test_football_overreaching_session_is_banded_correctly():
+    """te 50 is 5.0, the top of the Firstbeat scale."""
+    summary = workouts.normalise(_football_row())["summary"]
+    assert summary["aerobic_training_effect"] == 5.0
+    assert summary["aerobic_training_effect_band"] == "overreaching"
+    assert summary["anaerobic_training_effect"] == 4.1
