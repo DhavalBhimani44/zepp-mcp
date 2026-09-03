@@ -73,8 +73,13 @@ real captured responses.
   two most implementations report.
 - **Per-minute heart rate**, with no-reading markers preserved as `null`
   rather than dropped.
-- **Lactate threshold HR and pace**, tracked over time — the anchor for every
-  training zone — plus per-run time-in-zone distribution.
+- **Lactate threshold HR and pace**, tracked over time from the watch's own
+  estimate log — the anchor for every training zone — plus VO2 max, per-run
+  time-in-zone distribution and, once a Zepp Coach plan is active, per-session
+  plan progress.
+- **Running dynamics**: ground contact time, vertical oscillation, running
+  power and stride ratio, alongside the elevation and climb fields runs share
+  with hikes and rides.
 - **Lap and stream decoding** for individual workouts.
 - **Honest about uncertainty.** Unverified units are flagged, unknown sport
   codes are named as unknown, and an empty response is never reported as
@@ -297,7 +302,7 @@ does not mean a fresh login against Zepp's shared 10-attempt lockout.
 | `zepp_heart_rate` | Per-minute heart rate for a day, plus statistics |
 | `zepp_list_workouts` | All workouts, all sports, with sport-specific metrics |
 | `zepp_workout_detail` | Laps, time-series streams and GPS for one workout |
-| `zepp_training_thresholds` | Lactate threshold HR and pace, with how they've moved over time |
+| `zepp_training_thresholds` | Lactate threshold HR/pace and VO2 max, with how they've moved over time |
 | `zepp_describe_schema` | What the server knows, and where decoding is uncertain |
 | `zepp_raw_request` | Arbitrary GET, for endpoints not modelled yet |
 | `zepp_auth_status` | Token expiry and region host |
@@ -417,13 +422,13 @@ time too.
 | --- | --- |
 | Lap column names | Columns 1, 13 and 14 are confirmed (duration, strokes, SWOLF — see [examples](examples/README.md#how-this-example-resolved-a-documented-gap)). The remaining named columns are inferred, and anything outside the named set is returned raw. |
 | `pool_swim_pace` | Unit unconfirmed; flagged `unit_verified: false`. |
-| VO₂ max, training load | `SPORT_LOAD` and `VO2_MAX` return HTTP 500. |
+| RTPC | Present on every sport (`avg_rtpc_unverified` and friends), reads a constant 21 outside running, but its meaning is unconfirmed — exposed anyway rather than dropped, flagged as unverified. |
+| Cumulative training load | Per-session `exercise_load` is available; the rolling figure is not. `WatchSportStatistics/SPORT_LOAD` returns HTTP 500 server-side. VO2 max itself IS available — see `zepp_training_thresholds`. |
 | Some endpoints | `manualData`, `bloodPressure` and `heartRate` return HTTP 400 — they need parameters not yet worked out. |
 | Multisport | `parent_trackid` / `child_list` handling is built but untested; no triathlon has been recorded yet. |
-| Running depth | Confirmed on a single run: pace (s/m), stride length (cm), cadence and power all reconcile against the row's own distance, duration and step count. More runs would broaden that. |
 | GPS decoding | Untested. The corpus deliberately excludes GPS-bearing workouts. |
-| Training plans / Zepp Coach | No endpoint found across 13 candidate routes ([details](docs/api-findings.md#training-plans-and-zepp-coach--probed-2026-08-17)). Workout rows do carry `coachInsight`, `course_title` and `degreeOfCompletion`, all empty on an account with no plan — so plan data likely arrives through the workout row rather than a separate endpoint. A capture from an active plan would confirm it. |
-| Metrics without tools | PAI, SpO₂, stress, HRV, respiratory rate, readiness, Body Charge and weight all return data but are reachable only via `zepp_raw_request`. |
+| Zepp Coach | No dedicated endpoint across 22 probed routes with controls ([details](docs/api-findings.md#training-plans--confirmed-2026-09-03)). Plan progress is confirmed to arrive through the workout row instead — `dailyScore`, `dailyPlanFinished` and `runningProgram` populate once a plan is active, exposed as `training_plan` in `zepp_list_workouts`. `course_title` and `coachInsight` remain unconfirmed, still empty on every run observed. |
+| Metrics without dedicated tools | PAI, SpO₂, stress, HRV, respiratory rate, readiness and Body Charge return real data via `zepp_raw_request`. (A classifier bug used to report all of these as empty regardless of content — fixed; see [api-findings.md](docs/api-findings.md#the-_is_empty-classifier-only-checked-for-a-data-key).) |
 
 Help with any of these is welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

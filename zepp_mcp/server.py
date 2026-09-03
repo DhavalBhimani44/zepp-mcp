@@ -228,37 +228,37 @@ def zepp_workout_detail(
     return result
 
 
-@server.tool(
-    description="Lactate threshold heart rate and pace, with how they have "
-                "changed over time. LTHR anchors every training zone, so it "
-                "matters more than any single session."
-)
-def zepp_training_thresholds(
-    from_date: str | None = None,
-    to_date: str | None = None,
-) -> dict[str, Any]:
-    """Args: from_date/to_date as YYYY-MM-DD. Defaults to the last 180 days.
+def _lactate_threshold_estimates(client: api.ZeppClient, start: str,
+                                 end: str) -> tuple[list[dict[str, Any]], str]:
+    """Estimate history plus which source produced it.
 
-    The watch estimates lactate threshold from qualifying runs only. Runs
-    where it did not produce an estimate carry no threshold fields at all,
-    and are reported separately rather than counted as a zero."""
-    try:
-        start, end = _range(from_date, to_date, days=180)
-        outcome = api.workout_history(_get_client(), start, end)
-    except Exception as exc:
-        return _fail(exc)
+    The events endpoint is authoritative and carries its own date per
+    estimate. It can fail independently of the workout-history call (a
+    different route, a different response shape), so this falls back to
+    deriving estimates from workout rows -- the same thing the tool did
+    before this endpoint was found -- rather than returning nothing.
+    """
+    outcome = api.lactate_threshold_history(client, start, end)
+    if outcome.status == "ok":
+        events = api.parse_lactate_threshold_events(outcome.data)
+        if events:
+            for entry in events:
+                pace = entry.get("lactate_threshold_pace_sec_per_km")
+                if pace:
+                    entry["lactate_threshold_pace"] = (
+                        f"{int(pace) // 60}:{int(pace) % 60:02d}/km")
+            events.sort(key=lambda e: e.get("date") or "")
+            return events, "lactate_threshold_events"
 
-    if outcome.status != "ok":
-        return outcome.as_dict()
-
-    estimates, without = [], 0
-    for row in api.parse_rows(outcome.data):
+    history = api.workout_history(client, start, end)
+    if history.status != "ok":
+        return [], "workout_rows"
+    estimates = []
+    for row in api.parse_rows(history.data):
         item = workouts.normalise(row)
         foot = item.get("foot") or {}
         lthr = foot.get("lactate_threshold_hr_bpm")
         if lthr is None:
-            if item["sport"] == "outdoor_running":
-                without += 1
             continue
         entry = {
             "date": (item["start_local"] or "")[:10],
@@ -270,31 +270,80 @@ def zepp_training_thresholds(
         pace = entry["lactate_threshold_pace_sec_per_km"]
         if pace:
             entry["lactate_threshold_pace"] = f"{int(pace) // 60}:{int(pace) % 60:02d}/km"
-        vo2 = item["summary"].get("VO2_max")
-        if vo2:
-            entry["vo2_max"] = vo2
         estimates.append(entry)
-
     estimates.sort(key=lambda e: e["date"])
+    return estimates, "workout_rows"
+
+
+@server.tool(
+    description="Lactate threshold heart rate and pace, with how they have "
+                "changed over time, plus the current VO2 max estimate. "
+                "LTHR anchors every training zone, so it matters more than "
+                "any single session."
+)
+def zepp_training_thresholds(
+    from_date: str | None = None,
+    to_date: str | None = None,
+) -> dict[str, Any]:
+    """Args: from_date/to_date as YYYY-MM-DD. Defaults to the last 180 days.
+
+    The watch estimates lactate threshold from qualifying runs only. Runs
+    where it did not produce an estimate carry no threshold fields at all,
+    and are counted separately rather than as a zero."""
+    client = _get_client()
+    try:
+        start, end = _range(from_date, to_date, days=180)
+        estimates, source = _lactate_threshold_estimates(client, start, end)
+        vo2_max, without = None, 0
+        history = api.workout_history(client, start, end)
+        if history.status == "ok":
+            runs = [workouts.normalise(r) for r in api.parse_rows(history.data)]
+            runs = [r for r in runs if r["sport"] == "outdoor_running"]
+            runs.sort(key=lambda r: r.get("start_local") or "")
+            for run in runs:
+                vo2 = run["summary"].get("VO2_max")
+                if vo2:
+                    vo2_max = vo2  # last one wins -- most recent estimate
+                if run.get("foot", {}).get("lactate_threshold_hr_bpm") is None:
+                    without += 1
+    except Exception as exc:
+        return _fail(exc)
+
     if not estimates:
         return {
             "status": "no_data",
             "range": {"from": start, "to": end},
+            "source": source,
             "runs_without_an_estimate": without,
-            "note": "No run in this range carried a lactate threshold "
-                    "estimate. The watch only produces one from qualifying "
-                    "runs -- typically a sustained hard effort. This is "
-                    "absence of an estimate, not a threshold of zero.",
+            "note": "No lactate threshold estimate in this range, from "
+                    "either the event log or workout rows. The watch only "
+                    "produces one from qualifying runs -- typically a "
+                    "sustained hard effort. This is absence of an estimate, "
+                    "not a threshold of zero.",
         }
 
     latest = estimates[-1]
+    current = dict(latest)
+    if vo2_max:
+        # VO2_max is a rolling athlete-level estimate, not per-session: it
+        # read the same value (49) across a 20-minute and a 65-minute run.
+        # Attached to `current`, not to each history entry, for that reason.
+        current["vo2_max"] = vo2_max
     result: dict[str, Any] = {
         "status": "ok",
         "range": {"from": start, "to": end},
-        "current": latest,
+        "source": source,
+        "current": current,
         "estimate_count": len(estimates),
         "runs_without_an_estimate": without,
         "history": estimates,
+        "training_load": {
+            "note": "Only a per-session exercise_load is available (see "
+                    "zepp_list_workouts summary.exercise_load). The rolling "
+                    "cumulative training-load figure is not: the dedicated "
+                    "WatchSportStatistics/SPORT_LOAD endpoint returns HTTP "
+                    "500 server-side.",
+        },
         "note": "Zone boundaries in zepp_list_workouts are the watch's own "
                 "personalised ones. They are reported as measured and are "
                 "not recomputed from this threshold.",
@@ -330,18 +379,31 @@ def zepp_describe_schema() -> dict[str, Any]:
             for name, spec in decode.STREAM_SPECS.items()
         },
         "known_gaps": [
-            "No cycling sport code has been identified -- no ride has been "
-            "recorded yet. A bike ride reports as unknown_sport_<code>; its "
-            "cadence, power and heart rate still appear in the common "
-            "summary, and its remaining metrics under unclassified_metrics. "
-            "Nothing is lost except the sport label.",
-            "Lap columns are recovered by inference, not documentation. The "
-            "reference swim capture held 38 lap records against a summary "
-            "total_trips of 36, so lap sums are unreliable -- prefer the "
-            "workout summary's own totals.",
+            "RTPC (avg_rtpc_unverified and friends) is present on every "
+            "sport and reads a constant 21 outside running, which is "
+            "evidence it is a sentinel -- but its actual meaning is "
+            "unconfirmed. Report the number, not what it measures.",
+            "Lap columns are recovered by inference, not documentation. "
+            "Columns 1, 13 and 14 (duration, strokes, SWOLF) ARE confirmed "
+            "-- SWOLF is self-checking as duration + strokes, matches the "
+            "published SWOLF definition, and its components reconstruct "
+            "the workout summary's own swolf figure. Everything outside "
+            "that set is inferred or raw.",
             "pool_swim_pace has an unconfirmed unit.",
-            "VO2 max and training load endpoints return HTTP 500.",
-            "An empty 200 cannot be distinguished from a rejected request.",
+            "Cumulative training load is unavailable -- "
+            "WatchSportStatistics/SPORT_LOAD returns HTTP 500. Per-session "
+            "exercise_load and VO2 max (from zepp_training_thresholds) are "
+            "both available; only the rolling cumulative figure is not.",
+            "No dedicated Zepp Coach endpoint exists, across 22 probed "
+            "routes with controls. Plan progress (dailyScore, "
+            "dailyPlanFinished, running_program_id) IS available, exposed "
+            "as training_plan in zepp_list_workouts once a plan is active.",
+            "An empty 200 cannot always be distinguished from a rejected "
+            "request. This does not apply to the v2 events family "
+            "(readiness, HRV, DailyHealth, RespiratoryRate, "
+            "LactateThreshold) any more than to v1 endpoints -- an earlier "
+            "version of this classifier reported every v2 response empty "
+            "regardless of content, which has been fixed.",
         ],
     }
 

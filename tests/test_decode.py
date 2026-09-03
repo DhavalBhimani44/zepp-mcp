@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from zepp_mcp import decode, workouts
-from zepp_mcp.client import _is_empty, parse_rows
+from zepp_mcp.client import _is_empty, parse_lactate_threshold_events, parse_rows
 from zepp_mcp.codes import sport_name
 
 FIXTURES = Path(__file__).parent / "fixtures" / "zepp"
@@ -447,12 +447,16 @@ def test_unmapped_sport_still_surfaces_cadence_power_and_heart_rate(history_rows
     row = dict(next(r for r in history_rows if r["type"] == 1))
     row["type"] = 9999           # stand in for an unidentified bike code
     row["avg_frequency"] = "85"  # cycling cadence, rpm
-    row["avg_power"] = "210"
+    # Override rather than rely on the fixture's own average_power/max_power
+    # (a real run carries both), so the assertion is deterministic.
+    row["average_power"] = "210"
+    row["max_power"] = "-1"
 
     item = workouts.normalise(row)
     assert item["sport"] == "unknown_sport_9999"
     assert item["summary"]["avg_cadence_per_minute"] == 85
-    assert item["summary"]["avg_power"] == 210
+    assert item["summary"]["avg_power_watts"] == 210
+    assert "max_power_watts" not in item["summary"]
     assert item["summary"]["avg_heart_rate"] > 0
     # Sport-specific numbers are still visible, just not labelled as a sport.
     assert item["unclassified_metrics"]
@@ -612,8 +616,20 @@ def test_ride_without_sensors_omits_power_and_cadence():
     """A bike with no power meter or cadence sensor reports -1 and 0. Neither
     is a reading of zero watts or zero rpm."""
     summary = workouts.normalise(_ride_row())["summary"]
-    assert "avg_power" not in summary
+    assert "avg_power_watts" not in summary
+    assert "max_power_watts" not in summary
     assert "avg_cadence_per_minute" not in summary
+
+
+def test_run_power_field_uses_the_average_power_key():
+    """Runs populate `average_power`, a DIFFERENT raw key from `avg_power`
+    (which is absent as a key on every observed run). Both must land on the
+    same renamed output key."""
+    row = {"type": 1, "trackid": "1788056390", "dis": "8425.0",
+           "average_power": "202.0", "max_power": "274.0"}
+    summary = workouts.normalise(row)["summary"]
+    assert summary["avg_power_watts"] == 202
+    assert summary["max_power_watts"] == 274
 
 
 def test_personal_bests_are_decoded_from_nested_json():
@@ -674,3 +690,213 @@ def test_football_overreaching_session_is_banded_correctly():
     assert summary["aerobic_training_effect"] == 5.0
     assert summary["aerobic_training_effect_band"] == "overreaching"
     assert summary["anaerobic_training_effect"] == 4.1
+
+
+def test_v2_items_response_with_data_is_not_empty():
+    """readiness/hrv_sdnn/DailyHealth wrap results in `items`, not `data`.
+    Checking only `data` reported every one of these `no_data` regardless of
+    content -- confirmed live on 20-sample HRV and readiness responses."""
+    assert _is_empty(body("032_ev2_Charge_real_data.json")) is False
+    assert _is_empty(body("017_weight.json")) is False
+
+
+def test_v2_items_response_that_is_genuinely_empty_stays_empty():
+    assert _is_empty(body("029_evdate_blood_oxygen_osa_event.json")) is True
+    assert _is_empty({"items": []}) is True
+    assert _is_empty({"items": None}) is True
+
+
+def test_v1_data_response_is_unaffected_by_the_items_fix():
+    assert _is_empty({"code": 1, "data": [{"x": 1}]}) is False
+    assert _is_empty({"code": 1, "data": []}) is True
+    assert _is_empty({"code": 1, "data": None}) is True
+
+
+def test_unrecognised_shape_is_not_silently_treated_as_empty():
+    """A payload with neither `data` nor `items` is an unfamiliar shape.
+    Guessing it is empty would hide it from a caller who could otherwise
+    inspect it via zepp_raw_request."""
+    assert _is_empty({"code": 1, "message": "success"}) is False
+
+
+# -- running dynamics, training plan, RTPC, elevation parity ---------------
+
+def _dynamics_run_row():
+    """A real run row (2026-08-30) trimmed to the fields under test."""
+    return {
+        "type": 1, "trackid": "1788056390", "end_time": "1788060311",
+        "syncedTimezone": "Asia/Kolkata", "dis": "5552.0", "run_time": "3921",
+        "avg_pace": "0.706", "total_step": "6529", "avg_stride_length": "85",
+        "average_power": "202.0", "max_power": "274.0",
+        "averageGct": "300", "minGct": "252",
+        "averageVo": "85", "maxVo": "155", "avgVertStrideRatio": "100",
+        "equivDistance": "554812",
+        "averageRTPC": "1.7", "bestRTPC": "3", "worstRTPC": "0",
+        "altitude_ascend": "16", "altitude_descend": "1",
+        "distance_ascend": "190", "climb_dis_descend": "140",
+        "climb_dis_ascend_time": "87", "climb_dis_descend_time": "64",
+        "runningProgram": "3", "runningType": "1",
+        "dailyPlanFinished": True, "dailyScore": "99.23077",
+    }
+
+
+def test_running_dynamics_nest_under_foot():
+    item = workouts.normalise(_dynamics_run_row())
+    dyn = item["foot"]["running_dynamics"]
+    assert dyn["avg_ground_contact_time_ms"] == 300
+    assert dyn["min_ground_contact_time_ms"] == 252
+    assert dyn["avg_vertical_oscillation_mm"] == 85
+    assert dyn["max_vertical_oscillation_mm"] == 155
+    # 85mm / (85cm x 10) x 100 = 10.0%, and 100 raw / 10 = 10.0 -- matches.
+    assert dyn["avg_vertical_stride_ratio_percent"] == 10.0
+    # Power sits in the common summary, not nested in running_dynamics.
+    assert "average_power" not in dyn
+    assert item["summary"]["avg_power_watts"] == 202
+    assert item["summary"]["max_power_watts"] == 274
+
+
+def test_equiv_distance_converted_from_centimetres():
+    item = workouts.normalise(_dynamics_run_row())
+    assert item["foot"]["equiv_distance_metres"] == 5548.12
+    assert "equivDistance" not in item["foot"]
+
+
+def test_rtpc_exposed_under_an_explicitly_unverified_key():
+    item = workouts.normalise(_dynamics_run_row())
+    summary = item["summary"]
+    assert summary["avg_rtpc_unverified"] == 1.7
+    assert summary["best_rtpc_unverified"] == 3
+    # worstRTPC is 0, stripped by the same "ratio-like near-zero" default? No
+    # -- 0 is not in the rtpc sentinel family, so it must survive as 0.
+    assert summary["worst_rtpc_unverified"] == 0
+
+
+def test_rtpc_sentinel_21_is_stripped_on_non_running_sports():
+    """21.0 recurs on every non-running sport and is treated as the RTPC
+    not-applicable marker."""
+    row = {"type": 14, "trackid": "1786761306", "dis": "756.0",
+           "averageRTPC": "21.0", "bestRTPC": "21", "worstRTPC": "21"}
+    summary = workouts.normalise(row)["summary"]
+    assert "avg_rtpc_unverified" not in summary
+    assert "best_rtpc_unverified" not in summary
+    assert "worst_rtpc_unverified" not in summary
+
+
+def test_run_elevation_parity_with_hike():
+    """Runs climb hills too; these fields existed on hike rows and were
+    simply never added to foot."""
+    foot = workouts.normalise(_dynamics_run_row())["foot"]
+    assert foot["altitude_ascend"] == 16
+    assert foot["altitude_descend"] == 1
+    assert foot["distance_ascend"] == 190
+    assert foot["climb_dis_descend"] == 140
+    assert foot["climb_dis_ascend_time"] == 87
+    assert foot["climb_dis_descend_time"] == 64
+
+
+def test_swim_gains_pace_and_duration():
+    row = {"type": 14, "trackid": "1786761306", "dis": "756.0",
+           "avg_pace": "3.229762", "max_pace": "0.744", "run_time": "1439"}
+    swim = workouts.normalise(row)["swim"]
+    assert swim["avg_pace"] == pytest.approx(3.229762)
+    assert swim["max_pace"] == pytest.approx(0.744)
+    assert swim["run_time"] == 1439
+
+
+def test_bike_gains_climb_ascend_descend_times():
+    row = dict(_ride_row())
+    row["climb_dis_ascend_time"] = "134"
+    row["climb_dis_descend_time"] = "69"
+    ride = workouts.normalise(row)["ride"]
+    assert ride["climb_dis_ascend_time"] == 134
+    assert ride["climb_dis_descend_time"] == 69
+
+
+# -- training plan -----------------------------------------------------
+
+def test_training_plan_block_absent_when_no_plan_is_active():
+    """runningProgram 0 with every plan field empty/zero is a run with no
+    structured plan, confirmed on the 2026-08-08 run."""
+    row = {"type": 1, "trackid": "1786191738", "dis": "3363.0",
+           "runningProgram": "0", "runningType": "0",
+           "dailyPlanFinished": False, "dailyScore": "0.0"}
+    item = workouts.normalise(row)
+    assert "training_plan" not in item
+
+
+def test_training_plan_block_present_once_a_plan_is_active():
+    item = workouts.normalise(_dynamics_run_row())
+    plan = item["training_plan"]
+    assert plan["running_program_id"] == 3
+    assert plan["running_type_code"] == 1
+    assert plan["plan_session_finished"] is True
+    assert plan["plan_session_score_percent"] == 99.23
+
+
+def test_training_plan_only_attaches_to_running():
+    """The plan block is run-specific machinery; a swim or bike carrying a
+    stray runningProgram value (there is no evidence this happens, but the
+    guard should hold regardless) must not surface it under a foreign sport."""
+    row = dict(_ride_row())
+    row["runningProgram"] = "3"
+    row["dailyPlanFinished"] = True
+    row["dailyScore"] = "90.0"
+    item = workouts.normalise(row)
+    assert "training_plan" not in item
+
+
+# -- lactate threshold events -----------------------------------------------
+
+def test_parse_lactate_threshold_events_flattens_real_payload_shape():
+    """Shape captured live from /v2/users/me/events?eventType=
+    LactateThreshold&subType=summary: one item per estimate, one sample per
+    item, in this account's case -- but the parser must not assume that."""
+    payload = {
+        "items": [
+            {
+                "userId": "<userId>", "eventType": "LactateThreshold",
+                "subType": "summary", "timestamp": 1787961600000,
+                "value": {
+                    "timeZone": "1,Asia/Calcutta",
+                    "samples": [{"lactateThresholdHr": 166,
+                                "lactateThresholdPace": 322,
+                                "dateString": "2026-08-29", "s": 0}],
+                },
+            },
+            {
+                "userId": "<userId>", "eventType": "LactateThreshold",
+                "subType": "summary", "timestamp": 1788048000000,
+                "value": {
+                    "samples": [{"s": 0, "lactateThresholdPace": 325,
+                                "lactateThresholdHr": 173,
+                                "dateString": "2026-08-30"}],
+                },
+            },
+        ],
+    }
+    events = parse_lactate_threshold_events(payload)
+    assert len(events) == 2
+    assert events[0] == {
+        "date": "2026-08-29",
+        "lactate_threshold_hr_bpm": 166,
+        "lactate_threshold_pace_sec_per_km": 322,
+    }
+    assert events[1]["lactate_threshold_hr_bpm"] == 173
+
+
+def test_parse_lactate_threshold_events_handles_multiple_samples_per_item():
+    payload = {"items": [{"value": {"samples": [
+        {"lactateThresholdHr": 160, "dateString": "2026-07-01"},
+        {"lactateThresholdHr": 165, "dateString": "2026-07-15"},
+    ]}}]}
+    events = parse_lactate_threshold_events(payload)
+    assert [e["lactate_threshold_hr_bpm"] for e in events] == [160, 165]
+
+
+def test_parse_lactate_threshold_events_on_empty_or_malformed_payload():
+    assert parse_lactate_threshold_events({"items": []}) == []
+    assert parse_lactate_threshold_events({}) == []
+    assert parse_lactate_threshold_events(None) == []
+    assert parse_lactate_threshold_events({"items": [{"value": {}}]}) == []
+    assert parse_lactate_threshold_events(
+        {"items": [{"value": {"samples": [{"s": 0}]}}]}) == []

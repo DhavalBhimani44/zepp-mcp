@@ -226,3 +226,78 @@ consistent with no plan ever having been active.
 separate endpoint.** If someone activates a Zepp Coach plan and completes a
 planned session, those fields should populate. A capture of such a workout
 would settle it, and is a genuinely useful contribution.
+
+---
+
+## Training plans — confirmed 2026-09-03
+
+The hypothesis above is now confirmed. Once a Zepp Coach plan is active, the
+workout row's plan fields populate on every subsequent run:
+
+| Field | No plan (2026-08-08) | Plan active (2026-08-29 onward) |
+|---|---|---|
+| `runningProgram` | `0` | `3` |
+| `runningType` | `0` | `1` or `2` |
+| `dailyPlanFinished` | `False` | `True` |
+| `dailyScore` | `0.0` (absent) | `98.75`–`100.0` |
+
+`course_title` and `coachInsight` are still empty strings on every run
+observed, plan or no plan — those two remain unconfirmed.
+
+**Zepp Coach itself still has no dedicated endpoint.** A further nine routes
+were probed against an account with an *active* plan — the 2026-08-17 probe
+ran without one, so its all-empty result proved nothing either way. Every
+route 404'd against a 404 control (`/v1/zzz/not_real.json`), and
+`WatchSportStatistics/TRAINING_PLAN` returned 400, the same as a fabricated
+statistic name. Plan progress is exposed entirely through the workout row;
+there is no separate plan or course endpoint to query.
+
+## A working v2 events endpoint the previous probe missed: LactateThreshold
+
+While re-probing Zepp Coach, `eventType=LactateThreshold&subType=summary`
+against `/v2/users/me/events` returned a real, structured payload:
+
+```json
+{"items": [{"value": {"samples": [
+  {"lactateThresholdHr": 166, "lactateThresholdPace": 322,
+   "dateString": "2026-08-29"}
+]}}]}
+```
+
+This is the **authoritative** LTHR source — a dated estimate log independent
+of the workout that produced it — and it had been invisible until now because
+of a bug described below.
+
+## The `_is_empty` classifier only checked for a `data` key
+
+**This is a defect in this project's own client, not a Zepp API finding, but
+it is recorded here because it is what made the LactateThreshold discovery
+possible and it affects every v2 events endpoint, not just Coach-related
+ones.**
+
+`zepp_mcp/client.py::_is_empty` inspected `payload.get("data")` to decide
+whether an HTTP 200 was empty. The v2 events family
+(`/v2/users/me/events` — `readiness`, `hrv_sdnn`, `DailyHealth`,
+`RespiratoryRate`, `LactateThreshold`, and by extension every metric spec
+section 4 lists as "reachable only via `zepp_raw_request`") wraps its results
+in `items`, not `data`. `payload.get("data")` on a v2 response is always
+`None`, so every v2 response was reported `no_data` regardless of content.
+
+Confirmed live before the fix: `readiness` (20 items, 16.6 KB), `DailyHealth`
+(20 items, 10 KB), `hrv_sdnn` (20 items, 8.2 KB) and `RespiratoryRate` (5
+items) were all classified `no_data`. Since the server instructs the model to
+report `no_data` as "the query came back empty, not that the activity did not
+happen," this would have had the model tell a user they had no HRV data while
+20 real samples sat in the response it just discarded.
+
+Fixed by recognising `items` alongside `data`, judging emptiness by whichever
+container is present, and treating a payload with **neither** container as an
+unfamiliar shape rather than assuming it is empty. See the docstring on
+`_is_empty` for the full reasoning and `tests/test_decode.py`'s
+`test_v2_items_response_with_data_is_not_empty` and neighbours for the
+regression coverage.
+
+**Practical effect:** every metric in the "reachable only via
+`zepp_raw_request`" list is now genuinely reachable — the endpoint calls were
+already correct, but the response was being discarded before a caller ever
+saw it.

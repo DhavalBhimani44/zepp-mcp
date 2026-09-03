@@ -106,6 +106,9 @@ SENTINELS: dict[str, tuple[float, ...]] = {
     # is the watch declining to count them in that sport mode rather than a
     # player who never moved.
     "count": (0.0, -1.0),
+    # RTPC. Unconfirmed meaning -- see the comment on _RTPC_FIELDS in
+    # workouts.py for the evidence that 21.0 is a not-applicable marker.
+    "rtpc": (21.0, -1.0),
     "default": (-1.0,),
 }
 

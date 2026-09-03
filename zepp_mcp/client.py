@@ -45,9 +45,30 @@ class Outcome:
 
 
 def _is_empty(payload: Any) -> bool:
+    """A response is empty when its data container holds nothing.
+
+    Zepp uses two different container keys across API generations: v1
+    endpoints (band_data, workout history, profile) wrap results in `data`,
+    while v2 events (`/v2/users/me/events` -- readiness, HRV, DailyHealth,
+    RespiratoryRate, LactateThreshold) wrap them in `items`.
+
+    Checking only `data` meant every v2 response was reported empty
+    regardless of content, because `payload.get("data")` is None whether or
+    not `items` holds real records. This was found live: `hrv_sdnn` and
+    `readiness` each returned 20 real samples and were both reported
+    `no_data` -- which the server then instructed the model to describe as
+    "the query came back empty", a fault stated as a fact and the exact
+    failure this classifier exists to prevent.
+    """
     if payload is None or payload == [] or payload == {}:
         return True
-    if isinstance(payload, dict):
+    if not isinstance(payload, dict):
+        return False
+
+    if "items" in payload:
+        return payload.get("items") in (None, [], {}, "")
+
+    if "data" in payload:
         inner = payload.get("data")
         if inner in (None, [], {}, ""):
             return True
@@ -55,6 +76,12 @@ def _is_empty(payload: Any) -> bool:
             meaningful = {k: v for k, v in inner.items() if k != "next"}
             return not meaningful or all(v in (None, [], {}, "")
                                          for v in meaningful.values())
+        return False
+
+    # Neither recognised container is present. This is an unfamiliar shape,
+    # not a known-empty one -- treat it as non-empty so the caller can
+    # inspect the payload rather than have it silently disappear as
+    # "no data".
     return False
 
 
@@ -166,6 +193,65 @@ def workout_detail(client: ZeppClient, track_id: str, source: str) -> Outcome:
         "trackid": track_id, "source": source,
         "userid": client.credential().user_id,
     })
+
+
+def lactate_threshold_history(client: ZeppClient, from_date: str,
+                              to_date: str) -> Outcome:
+    """The watch's own lactate threshold estimate log.
+
+    This is the AUTHORITATIVE source, not the workout row. `lthr` also
+    appears on individual run rows (see workouts.py), but this endpoint
+    carries the full history with its own `dateString` per estimate, so it
+    stands on its own without joining against workout history -- and it
+    survives even if the originating run later drops out of the retention
+    window `zepp_list_workouts` queries.
+
+    Found via `/v2/users/me/events?eventType=LactateThreshold&subType=
+    summary`, the same v2 events family that also carries readiness, HRV,
+    DailyHealth and RespiratoryRate. It returns real data (verified: two
+    estimates, 166 and 173 bpm) and was masked entirely by the `_is_empty`
+    bug that only checked for a `data` key -- this endpoint's response uses
+    `items`, so every call here was reported `no_data` until that fix.
+    """
+    start = dt.datetime.strptime(from_date, "%Y-%m-%d")
+    end = dt.datetime.strptime(to_date, "%Y-%m-%d") + dt.timedelta(days=1)
+    return client.get("/v2/users/me/events", {
+        "from": str(int(start.timestamp() * 1000)),
+        "to": str(int(end.timestamp() * 1000)),
+        "eventType": "LactateThreshold", "subType": "summary", "limit": 50,
+    })
+
+
+def parse_lactate_threshold_events(payload: Any) -> list[dict[str, Any]]:
+    """Flatten the LactateThreshold events payload into one row per estimate.
+
+    Shape: {"items": [{"value": {"samples": [{"dateString", "lactate
+    ThresholdHr", "lactateThresholdPace"}, ...]}}, ...]}. One item can carry
+    more than one sample; both levels are walked.
+    """
+    items = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(items, list):
+        return []
+
+    out: list[dict[str, Any]] = []
+    for item in items:
+        value = item.get("value") if isinstance(item, dict) else None
+        samples = value.get("samples") if isinstance(value, dict) else None
+        if not isinstance(samples, list):
+            continue
+        for sample in samples:
+            if not isinstance(sample, dict):
+                continue
+            hr = sample.get("lactateThresholdHr")
+            if hr is None:
+                continue
+            out.append({
+                "date": sample.get("dateString"),
+                "lactate_threshold_hr_bpm": hr,
+                "lactate_threshold_pace_sec_per_km":
+                    sample.get("lactateThresholdPace"),
+            })
+    return out
 
 
 def from_env() -> ZeppClient:
