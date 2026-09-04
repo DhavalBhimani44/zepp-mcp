@@ -11,6 +11,16 @@ Differences from the recon spike, all of them forced by what the spike found:
   than probed. The server returns the account's real region; we never guess.
 * The token is cached, so a server restart does not mean a fresh login. Only
   the credential is cached. No health data is ever written to disk.
+
+Step 2's `app_name` is deliberately NOT `com.huami.midong` (the real Zepp
+Android app's package id). Huami's backend appears to key a session by
+`(user, app_name)`: logging in under the phone app's own identity evicts the
+phone's active session (see GitHub issue #5). We instead identify as the
+retired Mi Fit client id, `com.xiaomi.hm.health`, which other unofficial
+Huami API clients (e.g. micw/hacking-mifit-api) use successfully without
+this collision. `device_id` is likewise held stable across logins rather
+than randomized, so we don't look like a new device registering every time
+the cached token expires.
 """
 
 from __future__ import annotations
@@ -35,6 +45,10 @@ _REDIRECT = "https://s3-us-west-2.amazonaws.com/hm-registration/successsignin.ht
 
 _AUTH_HOST = "api-user.zepp.com"
 _DEFAULT_DATA_HOST = "api-mifit.zepp.com"
+
+# The app identity we register the token under at step 2. Must NOT be
+# "com.huami.midong" (the real Zepp app) -- see module docstring.
+_CLIENT_APP_NAME = "com.xiaomi.hm.health"
 
 _STEP1_HEADERS = {
     "app_name": "com.huami.midong", "appname": "com.huami.midong",
@@ -141,9 +155,9 @@ def login(client: httpx.Client, email: str, password: str,
     response = client.post(
         f"https://{_DEFAULT_DATA_HOST}/v2/client/login",
         timeout=20, headers=_STEP2_HEADERS, data={
-            "code": access_code, "device_id": str(uuid.uuid4()),
+            "code": access_code, "device_id": device_id(),
             "grant_type": "access_token", "third_name": "huami",
-            "app_name": "com.huami.midong", "country_code": country,
+            "app_name": _CLIENT_APP_NAME, "country_code": country,
             "device_model": "android_phone", "app_version": "9.12.5",
             "allow_registration": "false", "lang": "en",
             "dn": "api-mifit.zepp.com,api-user.zepp.com,"
@@ -179,6 +193,39 @@ def login(client: httpx.Client, email: str, password: str,
         country_code=regist.get("country_code") or country,
         expires_at=time.time() + ttl,
     )
+
+
+# --------------------------------------------------------------------------
+# Device identity
+# --------------------------------------------------------------------------
+
+def device_id_path() -> Path:
+    return cache_path().with_name("device_id")
+
+
+def device_id() -> str:
+    """A stable per-install device id, persisted next to the token cache.
+
+    Not a secret, just an opaque identifier -- kept stable across logins so
+    a re-login (e.g. after the cached token expires or a 401) doesn't look
+    like a new device registering under the account. See the module
+    docstring for why that matters.
+    """
+    if not cache_enabled():
+        return str(uuid.uuid4())
+    path = device_id_path()
+    if path.is_file():
+        cached = path.read_text().strip()
+        if cached:
+            return cached
+    new_id = str(uuid.uuid4())
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(new_id)
+        path.chmod(0o600)
+    except OSError:
+        pass  # Falls back to a fresh id next call; not a secret, not fatal.
+    return new_id
 
 
 # --------------------------------------------------------------------------
