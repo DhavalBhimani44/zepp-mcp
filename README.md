@@ -81,6 +81,9 @@ real captured responses.
   power and stride ratio, alongside the elevation and climb fields runs share
   with hikes and rides.
 - **Lap and stream decoding** for individual workouts.
+- **Smart-scale body composition.** Weight, height and BMI, plus body fat,
+  water and muscle percentages, bone mass, visceral fat and BMR when synced
+  from a real bio-impedance scale rather than a manual entry.
 - **Honest about uncertainty.** Unverified units are flagged, unknown sport
   codes are named as unknown, and an empty response is never reported as
   confirmed absence.
@@ -303,6 +306,7 @@ does not mean a fresh login against Zepp's shared 10-attempt lockout.
 | `zepp_list_workouts` | All workouts, all sports, with sport-specific metrics |
 | `zepp_workout_detail` | Laps, time-series streams and GPS for one workout |
 | `zepp_training_thresholds` | Lactate threshold HR/pace and VO2 max, with how they've moved over time |
+| `zepp_body_composition` | Smart-scale weight, BMI, and (real scale sync only) body fat/water/muscle %, bone mass, visceral fat, BMR |
 | `zepp_describe_schema` | What the server knows, and where decoding is uncertain |
 | `zepp_raw_request` | Arbitrary GET, for endpoints not modelled yet |
 | `zepp_auth_status` | Token expiry and region host |
@@ -429,6 +433,7 @@ time too.
 | GPS decoding | Untested. The corpus deliberately excludes GPS-bearing workouts. |
 | Zepp Coach | No dedicated endpoint across 22 probed routes with controls ([details](docs/api-findings.md#training-plans--confirmed-2026-09-03)). Plan progress is confirmed to arrive through the workout row instead — `dailyScore`, `dailyPlanFinished` and `runningProgram` populate once a plan is active, exposed as `training_plan` in `zepp_list_workouts`. `course_title` and `coachInsight` remain unconfirmed, still empty on every run observed. |
 | Metrics without dedicated tools | PAI, SpO₂, stress, HRV, respiratory rate, readiness and Body Charge return real data via `zepp_raw_request`. (A classifier bug used to report all of these as empty regardless of content — fixed; see [api-findings.md](docs/api-findings.md#the-_is_empty-classifier-only-checked-for-a-data-key).) |
+| `zepp_body_composition` fields | `weight_kg`/`height_cm`/`bmi` are verified (bmi reproduces weight / (height/100)²). Everything under `body_composition` (fat/water/muscle %, bone mass, BMR, visceral fat, body score) uses a schema sourced from a different open-source Zepp API client's documented real-scale capture, not from an account this project holds — see [api-findings.md](docs/api-findings.md#body-composition-scale-readings--confirmed-2026-09-05). `bmi_consistent: false` marks records (typically manual/HealthKit entries) whose own weight/height/bmi don't reconcile. |
 
 Help with any of these is welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `zepp_body_composition`: smart-scale weight, height and BMI (verified),
+  plus body fat/water/muscle %, bone mass, visceral fat rating and basal
+  metabolism when synced from a real bio-impedance scale rather than a
+  manual entry (#7). `bmi_consistent` flags records whose own weight,
+  height and bmi don't reconcile with each other.
+
 ### Fixed
 
 - Login no longer registers the app token under `com.huami.midong`, the real

@@ -222,6 +222,32 @@ def lactate_threshold_history(client: ZeppClient, from_date: str,
     })
 
 
+def weight_records(client: ZeppClient, limit: int = 20,
+                   before: str | None = None) -> Outcome:
+    """Body-composition scale readings for the account holder (member -1).
+
+    Neither the endpoint nor its schema is in Zepp's own API surface docs --
+    found via a sibling open-source Zepp API client, AlexxIT/
+    SmartScaleConnect, which documents a real Mi Body Composition Scale 2
+    capture (see docs/api-findings.md). Family members other than the
+    account holder are not modelled. `before` walks backward through
+    history via the `toTime` cursor this endpoint actually takes; unlike
+    band_data / workout_history, it has no from/to range parameter.
+    """
+    params: dict[str, Any] = {"limit": limit}
+    if before:
+        cutoff = dt.datetime.strptime(before, "%Y-%m-%d") + dt.timedelta(days=1)
+        params["toTime"] = int(cutoff.timestamp())
+    user_id = client.credential().user_id
+    return client.get(f"/users/{user_id}/members/-1/weightRecords", params)
+
+
+def parse_weight_items(payload: Any) -> list[dict[str, Any]]:
+    """weightRecords wraps results in `items`, like the v2 events family."""
+    items = payload.get("items") if isinstance(payload, dict) else None
+    return [i for i in items if isinstance(i, dict)] if isinstance(items, list) else []
+
+
 def parse_lactate_threshold_events(payload: Any) -> list[dict[str, Any]]:
     """Flatten the LactateThreshold events payload into one row per estimate.
 

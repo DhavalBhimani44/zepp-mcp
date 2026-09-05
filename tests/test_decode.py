@@ -13,7 +13,12 @@ from pathlib import Path
 import pytest
 
 from zepp_mcp import decode, workouts
-from zepp_mcp.client import _is_empty, parse_lactate_threshold_events, parse_rows
+from zepp_mcp.client import (
+    _is_empty,
+    parse_lactate_threshold_events,
+    parse_rows,
+    parse_weight_items,
+)
 from zepp_mcp.codes import sport_name
 
 FIXTURES = Path(__file__).parent / "fixtures" / "zepp"
@@ -900,3 +905,21 @@ def test_parse_lactate_threshold_events_on_empty_or_malformed_payload():
     assert parse_lactate_threshold_events({"items": [{"value": {}}]}) == []
     assert parse_lactate_threshold_events(
         {"items": [{"value": {"samples": [{"s": 0}]}}]}) == []
+
+
+# -- weight records -----------------------------------------------------
+
+def test_parse_weight_items_reads_real_payload_shape():
+    items = parse_weight_items(body("017_weight.json"))
+    assert len(items) == 2
+    assert items[0]["weightType"] == 1
+    assert items[1]["weightType"] == 7
+
+
+def test_parse_weight_items_on_empty_or_malformed_payload():
+    assert parse_weight_items({"items": []}) == []
+    assert parse_weight_items({"items": None}) == []
+    assert parse_weight_items({}) == []
+    assert parse_weight_items(None) == []
+    assert parse_weight_items({"items": [{"summary": {}}, "not a dict", None]}) == [
+        {"summary": {}}]
