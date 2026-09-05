@@ -35,6 +35,7 @@ TIMEOUT_SECONDS = 60
 
 EXPECTED_TOOLS = {
     "zepp_auth_status",
+    "zepp_body_composition",
     "zepp_daily_summary",
     "zepp_describe_schema",
     "zepp_heart_rate",

@@ -301,3 +301,69 @@ regression coverage.
 `zepp_raw_request`" list is now genuinely reachable — the endpoint calls were
 already correct, but the response was being discarded before a caller ever
 saw it.
+
+## Body composition scale readings — confirmed 2026-09-05
+
+Filed as issue #7: users with a smart body-composition scale wanted weight,
+body fat %, muscle mass and BMI alongside the rest of this project's data.
+
+**The endpoint was already in this project's own corpus.** Row 4's metrics
+table (`weight`, above) points at `tests/fixtures/zepp/017_weight.json`,
+captured in the original recon spike:
+
+```json
+{"items": [{
+  "generatedTime": 1784546800, "weightType": 1,
+  "summary": {"weight": 70.0, "height": 175, "age": 21, "bmi": 27.8,
+              "encryptImpedance": "0", "bodyBalanceScore": 93,
+              "oneFootMeasureTime": 93.0, "source": 2}
+}]}
+```
+
+from `GET /users/{uid}/members/-1/weightRecords`. It never became a tool
+because that capture has no `fatRate`/`muscleRate`/`boneMass` — the account
+behind it never owned a real scale; `source: 2` and (on the second item)
+`thirdAppName: "Health"` mark these as manual/HealthKit-linked entries, not
+a bio-impedance sync.
+
+**Both real records also have a `bmi` that contradicts their own
+`weight`/`height`** (record 1: reported 27.8 vs. 70 / 1.75² = 22.9; record
+2: 26.0 vs. the same 22.9). This is not a decoding bug -- it is what the API
+returned. `zepp_mcp/body.py::normalise` computes the expected BMI itself and
+sets `bmi_consistent: false` on records where it disagrees, rather than
+passing through a number the payload's own arithmetic contradicts.
+
+**The full scale schema came from outside this project.** No account this
+project holds has a real bio-impedance scale to capture from. GitHub code
+search for `encryptImpedance` (initially suspected to be a crypto blocker —
+it is not; see below) turned up `github.com/AlexxIT/SmartScaleConnect`, an
+independent open-source client for the same `api-mifit.zepp.com` API, whose
+README documents a real Mi Body Composition Scale 2 reading:
+
+```json
+{
+  "weight": 64.7, "height": 172.0, "bmi": 21.8,
+  "fatRate": 17.01331, "bodyWaterRate": 56.92887, "boneMass": 2.7305484,
+  "muscleRate": 50.961838, "muscleAge": 25, "proteinRatio": 21.837502,
+  "visceralFat": 9.0, "metabolism": 1358.0, "bodyScore": 89, "bodyStyle": 5,
+  "standBodyWeight": 64.4, "impedance": 451, "encryptImpedance": "451"
+}
+```
+
+`64.7 / 1.72² = 21.87 ≈ 21.8` — self-consistent, unlike this project's own
+two captures. `encryptImpedance` is a misnomer, not a cipher: here it is the
+literal string form of the plain `impedance` int next to it, "451" == 451.
+Body composition is computed scale-side (or by whatever app writes the
+record — the Go client's own writer pre-computes it and never sends
+`impedance` at all) and stored as ordinary numeric fields; nothing about
+reading it requires decryption.
+
+**What this means for verification status.** `weight_kg`, `height_cm` and
+`bmi` are cross-checked the same way SWOLF is elsewhere in this project, so
+they carry no caveat. Everything else in `body_composition` — fat/water/
+muscle %, bone mass, BMR, visceral fat, body score — is exposed with its
+provenance stated rather than asserted as fact, because the only evidence
+for those field names and units is one community-documented capture, not
+this project's own data. `muscleRate` keeps its ambiguous name: even
+SmartScaleConnect's own author does not know if it is a percentage or an
+absolute mass ("don't know why name is rate?!").

@@ -14,8 +14,8 @@ from typing import Any, Literal
 
 from mcp.server import MCPServer
 
+from . import body, decode, workouts
 from . import client as api
-from . import decode, workouts
 from .auth import describe_expiry
 from .codes import SPORT_CODES
 
@@ -228,6 +228,41 @@ def zepp_workout_detail(
     return result
 
 
+@server.tool(
+    description="Body composition scale readings: weight, height, BMI, and "
+                "-- when synced from a real bio-impedance scale rather than "
+                "a manual entry -- body fat %, body water %, muscle, bone "
+                "mass, visceral fat rating and basal metabolism (BMR)."
+)
+def zepp_body_composition(
+    limit: int = 20,
+    before: str | None = None,
+) -> dict[str, Any]:
+    """Args: limit caps how many readings to return, most recent first.
+    `before` (YYYY-MM-DD) pages backward from that date; default is now.
+
+    Only weight/height/bmi are independently verified. Everything under
+    `body_composition` uses a schema sourced from a different open-source
+    Zepp API client's documented capture, not from this project's own
+    verified data -- see zepp_describe_schema known_gaps. `bmi_consistent`
+    is False when a record's own weight/height/bmi do not reconcile, which
+    happens for manual/HealthKit-linked entries as opposed to a real scale
+    sync; treat body_composition on such a record with extra caution."""
+    try:
+        outcome = api.weight_records(_get_client(), limit=limit, before=before)
+    except Exception as exc:
+        return _fail(exc)
+
+    if outcome.status != "ok":
+        return outcome.as_dict()
+
+    items = api.parse_weight_items(outcome.data)
+    readings = [body.normalise(item) for item in items]
+    readings.sort(key=lambda r: r.get("date") or "", reverse=True)
+    return {"status": "ok", "reading_count": len(readings),
+            "readings": readings[:limit]}
+
+
 def _lactate_threshold_estimates(client: api.ZeppClient, start: str,
                                  end: str) -> tuple[list[dict[str, Any]], str]:
     """Estimate history plus which source produced it.
@@ -398,6 +433,15 @@ def zepp_describe_schema() -> dict[str, Any]:
             "routes with controls. Plan progress (dailyScore, "
             "dailyPlanFinished, running_program_id) IS available, exposed "
             "as training_plan in zepp_list_workouts once a plan is active.",
+            "zepp_body_composition: weight_kg/height_cm/bmi are verified "
+            "(bmi reproduces weight / (height/100)**2). Everything under "
+            "body_composition (fat/water/muscle %, bone mass, visceral "
+            "fat, BMR, body score) uses a schema sourced from a different "
+            "open-source Zepp API client's documented real-scale capture "
+            "(AlexxIT/SmartScaleConnect), not from an account this project "
+            "holds -- see docs/api-findings.md. bmi_consistent flags "
+            "records (typically manual/HealthKit entries, not a real "
+            "scale sync) whose own weight/height/bmi do not reconcile.",
             "An empty 200 cannot always be distinguished from a rejected "
             "request. This does not apply to the v2 events family "
             "(readiness, HRV, DailyHealth, RespiratoryRate, "
