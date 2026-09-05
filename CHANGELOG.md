@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Login no longer registers the app token under `com.huami.midong`, the real
+  Zepp Android app's package id. Huami's backend appears to key an active
+  session by `(user, app_name)`, so logging in as the phone's own app evicted
+  the phone's session (#5). Login now identifies as the retired Mi Fit client
+  id, and the device id is held stable across logins instead of being
+  randomized on every call.
+
 ## [0.1.0] - 2026-08-16
 
 First public release.
