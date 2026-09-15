@@ -697,6 +697,93 @@ def test_football_overreaching_session_is_banded_correctly():
     assert summary["anaerobic_training_effect"] == 4.1
 
 
+# -- rope skipping ----------------------------------------------------------
+
+def _skipping_row():
+    """A real code-21 row, trimmed to the fields under test. `pb`'s
+    rope_skipping_-prefixed keys are what identify this code, the same way
+    ride_-prefixed keys identified code 9 as cycling."""
+    return {
+        "type": 21, "trackid": "1789133233", "end_time": "1789133576",
+        "syncedTimezone": "Asia/Kolkata", "dis": "0.0", "run_time": "334",
+        "calorie": "58.0", "avg_heart_rate": "142.0", "max_heart_rate": "170",
+        "min_heart_rate": "116", "avg_frequency": "51.0", "max_frequency": 130,
+        "rope_skipping_count": 268, "rope_skipping_avg_frequency": 51,
+        "rope_skipping_max_frequency": 130, "rope_skipping_rest_time": -1,
+        "numberOfConsecutive": 176, "total_group": 2,
+        "pb": '{"rope_skipping_maximum_continuous_jump":176,'
+              '"rope_skipping_maximum_time":334,'
+              '"rope_skipping_maximum_total":268}',
+    }
+
+
+def test_sport_code_21_is_rope_skipping():
+    item = workouts.normalise(_skipping_row())
+    assert item["sport"] == "rope_skipping"
+    assert item["sport_code"] == 21
+    assert "rope_skipping" in item
+    assert "swim" not in item and "foot" not in item and "strength" not in item
+    assert "unclassified_metrics" not in item
+
+
+def test_rope_skipping_surfaces_jump_counts():
+    block = workouts.normalise(_skipping_row())["rope_skipping"]
+    assert block["total_jumps"] == 268
+    assert block["max_consecutive_jumps"] == 176
+    assert block["total_group"] == 2
+
+
+def test_rope_skipping_drops_the_duplicate_frequency_fields():
+    """rope_skipping_avg_frequency/max_frequency exactly duplicate the common
+    avg_frequency/max_frequency fields (51 == 51, 130 == 130 here) -- a
+    reused field under a name that only makes sense for its own sport,
+    the same issue already documented for a run in SPORT_FIELDS."""
+    block = workouts.normalise(_skipping_row())["rope_skipping"]
+    assert "rope_skipping_avg_frequency" not in block
+    assert "rope_skipping_max_frequency" not in block
+    assert "rope_skipping_rest_time" not in block
+
+
+def test_rope_skipping_personal_bests_are_decoded():
+    best = workouts.normalise(_skipping_row())["personal_bests"]
+    assert best["rope_skipping_maximum_total"] == 268
+    assert all(k.startswith("rope_skipping_") for k in best)
+
+
+# -- free training -----------------------------------------------------------
+
+def _free_training_row():
+    """A real code-16 row: zero distance, zero cadence, no pb object, no
+    sport-specific signature of any kind -- captured back-to-back with the
+    skipping session above, on the same account, as the account owner's
+    other new sport."""
+    return {
+        "type": 16, "trackid": "1789133749", "end_time": "1789137542",
+        "syncedTimezone": "Asia/Kolkata", "dis": "0.0", "run_time": "3087",
+        "calorie": "389.0", "avg_heart_rate": "113.0", "max_heart_rate": "165",
+        "min_heart_rate": "74", "avg_frequency": "0.0", "max_frequency": 0,
+        "rope_skipping_count": 0, "total_group": -1, "pb": "",
+    }
+
+
+def test_sport_code_16_is_free_training():
+    item = workouts.normalise(_free_training_row())
+    assert item["sport"] == "free_training"
+    assert item["sport_code"] == 16
+    assert "unclassified_metrics" not in item
+    assert "free_training" not in item
+    assert "swim" not in item and "foot" not in item and "strength" not in item
+
+
+def test_free_training_has_no_personal_bests():
+    assert "personal_bests" not in workouts.normalise(_free_training_row())
+
+
+def test_sport_name_covers_the_newly_added_sports():
+    assert sport_name(16) == "free_training"
+    assert sport_name(21) == "rope_skipping"
+
+
 def test_v2_items_response_with_data_is_not_empty():
     """readiness/hrv_sdnn/DailyHealth wrap results in `items`, not `data`.
     Checking only `data` reported every one of these `no_data` regardless of

@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metabolism when synced from a real bio-impedance scale rather than a
   manual entry (#7). `bmi_consistent` flags records whose own weight,
   height and bmi don't reconcile with each other.
+- Two more sport codes: 21 (`rope_skipping`), confirmed from the row's own
+  `rope_skipping_`-prefixed `pb` keys, surfacing total jump count and
+  longest unbroken streak; and 16 (`free_training`), confirmed by
+  elimination rather than a positive payload signature — see
+  `zepp_describe_schema` known_gaps.
 
 ### Fixed
 

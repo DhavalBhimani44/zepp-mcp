@@ -403,10 +403,15 @@ def zepp_describe_schema() -> dict[str, Any]:
     return {
         "sport_codes": {
             "identified": SPORT_CODES,
-            "note": "Every sport code seen on this account is identified and "
-                    "confirmed against the Zepp app. Codes absent from this "
-                    "map are reported as unknown_sport_<code>: they are real "
-                    "activities, only the name is unknown.",
+            "note": "Every sport code seen on this account is identified. "
+                    "Codes absent from this map are reported as "
+                    "unknown_sport_<code>: they are real activities, only "
+                    "the name is unknown. Most codes are confirmed against "
+                    "the Zepp app directly or against a sport-prefixed "
+                    "payload field (e.g. code 9's ride_-prefixed pb keys, "
+                    "code 21's rope_skipping_-prefixed ones) -- code 16 "
+                    "(free_training) has neither and was named by "
+                    "elimination instead, see known_gaps.",
         },
         "stream_units": {
             name: {"unit": spec.unit, "encoding": spec.encoding,
@@ -414,6 +419,18 @@ def zepp_describe_schema() -> dict[str, Any]:
             for name, spec in decode.STREAM_SPECS.items()
         },
         "known_gaps": [
+            "Sport code 16 (free_training) has no positive evidence in the "
+            "payload -- no field is prefixed for it the way ride_ or "
+            "rope_skipping_ are for codes 9 and 21. It was named by "
+            "elimination: the account owner logged exactly two new sport "
+            "codes back-to-back on 2026-09-11, code 21 is unambiguously "
+            "rope skipping from its own pb keys, which leaves 16 as the "
+            "other one -- consistent with the row itself carrying zero "
+            "distance, zero cadence and no block-specific field, the "
+            "signature of an equipment-free session with nothing to "
+            "measure. Weaker confirmation than every other code in this "
+            "map; a screenshot of the Zepp app naming code 16 would settle "
+            "it outright.",
             "RTPC (avg_rtpc_unverified and friends) is present on every "
             "sport and reads a constant 21 outside running, which is "
             "evidence it is a sentinel -- but its actual meaning is "

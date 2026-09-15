@@ -54,6 +54,24 @@ SLEEP_SUMMARY_FIELDS: dict[str, str] = {
 #                         with a step count -- slow ground speed, hard effort
 # 52: strength training   zero distance, total_group = set count, plus a
 #                         strengthAssess JSON stream
+# 16: free training       found the same way as 21 below: zero distance,
+#                         zero cadence, no pb object, and none of the
+#                         swim/foot/strength/hike/ride fields populated --
+#                         confirmed by elimination against the account
+#                         owner's own statement that exactly two new codes
+#                         appeared on 2026-09-11, code skipping and free
+#                         training, plus code 21 (below) being unambiguously
+#                         the other one. Weaker evidence than a positive
+#                         payload signature -- see zepp_describe_schema
+#                         known_gaps.
+# 21: rope skipping       confirmed by the payload itself, not inferred: the
+#                         row's `pb` object is keyed
+#                         rope_skipping_maximum_continuous_jump,
+#                         rope_skipping_maximum_time and
+#                         rope_skipping_maximum_total (176/334/268 on the
+#                         account owner's session), the same evidence class
+#                         that confirmed code 9 as cycling via ride_-prefixed
+#                         pb keys.
 #
 # Codes outside this map are reported as unknown_sport_<code> rather than
 # guessed. A fabricated sport name in front of the model becomes a fact.
@@ -62,7 +80,9 @@ SPORT_CODES: dict[int, str] = {
     8: "walking",
     9: "outdoor_cycling",
     14: "pool_swimming",
+    16: "free_training",
     18: "football",
+    21: "rope_skipping",
     22: "hiking",
     52: "strength_training",
 }

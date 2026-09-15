@@ -367,3 +367,41 @@ for those field names and units is one community-documented capture, not
 this project's own data. `muscleRate` keeps its ambiguous name: even
 SmartScaleConnect's own author does not know if it is a percentage or an
 absolute mass ("don't know why name is rate?!").
+
+## Two more sport codes — confirmed 2026-09-15
+
+The account owner logged two new activities back-to-back on 2026-09-11 that
+`zepp_list_workouts` reported as `unknown_sport_16` and `unknown_sport_21`.
+Pulling the raw index row for both via `zepp_raw_request` against
+`/v1/sport/run/history.json` settled both, with very different confidence.
+
+**Code 21 is rope skipping, confirmed by the payload itself.** The row's `pb`
+object is keyed `rope_skipping_maximum_continuous_jump`,
+`rope_skipping_maximum_time` and `rope_skipping_maximum_total` — exactly the
+evidence class (a sport-prefixed `pb` object) that confirmed code 9 as
+cycling via `ride_`-prefixed keys. Two more fields corroborate it:
+`rope_skipping_count` (268) matches the pb's `_total`, and `numberOfConsecutive`
+(176) matches the pb's `_continuous_jump`. A third, `total_group: 2`, is the
+count of skipping sets — confirmed against `strength_training_group`
+(a reused, undecoded JSON blob: `[{"count":182},{"count":86}]`), whose two
+entries sum to 268, the session's own jump count.
+
+**Code 16 is free training, confirmed by elimination, not by a positive
+signature.** No field anywhere in this row is prefixed the way `rope_skipping_`
+or `ride_` are — `pb` is empty, `total_group` is `-1`, and every sport block
+(swim/foot/strength/hike/ride/field_sport) reads its sentinel. That absence
+is consistent with Free Training as a real Zepp Coach mode (no equipment, no
+specific movement to measure), but consistency isn't proof the way a
+sport-prefixed field is. The identification rests on the account owner
+having logged exactly two new codes in this window, and code 21 above being
+unambiguously the other one — not on anything code 16's own payload asserts
+about itself. This is the one sport code in `SPORT_CODES` confirmed neither
+against the Zepp app directly nor against a self-naming payload field, and
+`zepp_describe_schema`'s `known_gaps` says so.
+
+`rope_skipping_avg_frequency` and `rope_skipping_max_frequency` reproduce
+`avg_frequency`/`max_frequency` exactly (51/130 on this session) — the same
+reused-field pattern already documented for a run — and stay unexposed for
+the same reason. `rope_skipping_rest_time` was `-1` on the only skipping
+session captured; unconfirmed either way, so it stays unexposed rather than
+guessed.

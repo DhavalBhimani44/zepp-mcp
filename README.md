@@ -67,8 +67,9 @@ real captured responses.
 ## Features
 
 - **All sports in one call.** Swimming, running, cycling, football, walking,
-  hiking and strength work, each with its own metrics — SWOLF and stroke counts for swims, pace
-  and cadence for runs, set counts for the gym.
+  hiking, strength work, rope skipping and free training, each with its own metrics — SWOLF and
+  stroke counts for swims, pace and cadence for runs, set counts for the gym, jump counts for
+  skipping.
 - **Sleep with all four stages.** Light, deep, REM and awake, not just the
   two most implementations report.
 - **Per-minute heart rate**, with no-reading markers preserved as `null`
@@ -434,6 +435,7 @@ time too.
 | Zepp Coach | No dedicated endpoint across 22 probed routes with controls ([details](docs/api-findings.md#training-plans--confirmed-2026-09-03)). Plan progress is confirmed to arrive through the workout row instead — `dailyScore`, `dailyPlanFinished` and `runningProgram` populate once a plan is active, exposed as `training_plan` in `zepp_list_workouts`. `course_title` and `coachInsight` remain unconfirmed, still empty on every run observed. |
 | Metrics without dedicated tools | PAI, SpO₂, stress, HRV, respiratory rate, readiness and Body Charge return real data via `zepp_raw_request`. (A classifier bug used to report all of these as empty regardless of content — fixed; see [api-findings.md](docs/api-findings.md#the-_is_empty-classifier-only-checked-for-a-data-key).) |
 | `zepp_body_composition` fields | `weight_kg`/`height_cm`/`bmi` are verified (bmi reproduces weight / (height/100)²). Everything under `body_composition` (fat/water/muscle %, bone mass, BMR, visceral fat, body score) uses a schema sourced from a different open-source Zepp API client's documented real-scale capture, not from an account this project holds — see [api-findings.md](docs/api-findings.md#body-composition-scale-readings--confirmed-2026-09-05). `bmi_consistent: false` marks records (typically manual/HealthKit entries) whose own weight/height/bmi don't reconcile. |
+| Sport code 16 (`free_training`) | Named by elimination, not by a positive payload signature — no field is prefixed for it the way `ride_`/`rope_skipping_` are for codes 9/21. See [api-findings.md](docs/api-findings.md#two-more-sport-codes--confirmed-2026-09-15) and `zepp_describe_schema`. |
 
 Help with any of these is welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

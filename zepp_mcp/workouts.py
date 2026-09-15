@@ -89,12 +89,32 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
         "climb_dis_ascend_time", "climb_dis_descend_time",
         "avg_altitude", "max_altitude", "min_altitude",
     ),
+    # Sport code 21. Jump count and longest unbroken streak are confirmed
+    # against the row's own pb object (see codes.py); total_group is the
+    # count of skipping sets/intervals, confirmed against a real session
+    # where two groups of 182 and 86 jumps (from strength_training_group,
+    # not decoded further) sum to the session's own rope_skipping_count of
+    # 268. avg/max cadence come through COMMON_FIELDS, not repeated here --
+    # rope_skipping_avg_frequency and _max_frequency are the same numbers
+    # under a sport-specific name and are deliberately dropped, the same
+    # call already made for a run's avg_frequency (see the NOT-exposed note
+    # below).
+    "rope_skipping": (
+        "rope_skipping_count", "numberOfConsecutive", "total_group",
+    ),
+    # Sport code 16. No field anywhere in the payload is prefixed for this
+    # sport the way rope_skipping_ or ride_ are -- zero distance, zero
+    # cadence, no pb object, nothing in any other sport's block populated.
+    # That absence of any sport-specific signature is itself the signature
+    # of Free Training: an equipment-free session with no specific movement
+    # to measure, so everything about it is already in COMMON_FIELDS.
+    "free_training": (),
 }
 
 # Which sport-specific block applies to which numeric type code.
 _BLOCK_FOR_CODE: dict[int, str] = {
-    1: "foot", 8: "foot", 9: "ride", 14: "swim", 18: "field_sport",
-    22: "hike", 52: "strength",
+    1: "foot", 8: "foot", 9: "ride", 14: "swim", 16: "free_training",
+    18: "field_sport", 21: "rope_skipping", 22: "hike", 52: "strength",
 }
 
 # Running biomechanics, nested under foot["running_dynamics"] rather than
@@ -114,8 +134,13 @@ RUNNING_DYNAMICS_FIELDS: tuple[str, ...] = (
 #                              account). A biometric the watch stamps onto
 #                              every row, not something the session measured.
 #   rope_skipping_avg_frequency  exactly equals avg_frequency (155 == 155 on
-#                              a run) -- a reused field under a name that
-#                              only makes sense for its original sport.
+#   / rope_skipping_max_frequency  a run, 51 == 51 and 130 == 130 on an
+#                              actual code-21 skipping session) -- a reused
+#                              field under a name that only makes sense for
+#                              its original sport.
+#   rope_skipping_rest_time   always -1 on the one skipping session
+#                              observed. No evidence of a real value either
+#                              way, so left unexposed rather than guessed.
 #   strength_training_group   appears on runs and swims carrying stale gym
 #                              data from an unrelated session.
 #   averageAltitude / highestAltitude / lowestAltitude / totalClimbDistance
@@ -191,7 +216,13 @@ _TEMPERATURE_FIELDS = frozenset({
     "avg_temperature", "min_temperature", "max_temperature",
 })
 _PERCENTAGE_FIELDS = frozenset({"spo2_max", "spo2_min"})
-_COUNT_FIELDS = frozenset({"total_step", "total_strokes", "total_trips"})
+_COUNT_FIELDS = frozenset({
+    "total_step", "total_strokes", "total_trips",
+    # 0 on a code-21 row with no jumps recorded is treated the same as
+    # football's 0 steps -- the watch declining to count, not a session
+    # with zero of the thing it exists to measure.
+    "rope_skipping_count", "numberOfConsecutive",
+})
 _FREQUENCY_FIELDS = frozenset({"avg_frequency", "max_frequency"})
 _PACE_FIELDS = frozenset({"avg_pace", "max_pace", "min_pace"})
 _RATIO_FIELDS = frozenset({
@@ -242,6 +273,10 @@ _RENAMED_FIELDS: dict[str, str] = {
     "minGct": "min_ground_contact_time_ms",
     "averageVo": "avg_vertical_oscillation_mm",
     "maxVo": "max_vertical_oscillation_mm",
+    # Renamed with units/intent in the name -- "numberOfConsecutive" alone
+    # doesn't say consecutive what.
+    "rope_skipping_count": "total_jumps",
+    "numberOfConsecutive": "max_consecutive_jumps",
     # RTPC is unverified (see _RTPC_FIELDS), so the key says so rather than
     # implying a settled meaning.
     "averageRTPC": "avg_rtpc_unverified",

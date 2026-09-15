@@ -86,7 +86,9 @@ Remember that MCP clients spawn a fresh server process per session, so
 Good first contributions, roughly in order of value:
 
 1. **Confirm a sport code.** The payload contains no sport name — only a
-   number. `zepp_mcp/codes.py` maps the five codes seen on one account. If
+   number. `zepp_mcp/codes.py` maps the nine codes seen on one account, one
+   of them (16, free training) by elimination rather than a positive
+   signature — see its comment in `codes.py` for what would settle it. If
    your watch records a sport that reports as `unknown_sport_<code>`, open an
    issue with the code and what the Zepp app calls it.
 2. **Confirm a flagged unit.** Anything with `unit_verified: false`, plus the
