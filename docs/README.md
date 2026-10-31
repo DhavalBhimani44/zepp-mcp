@@ -7,6 +7,10 @@ Endpoint inventory, payload encodings, sentinel values, and the twelve
 questions the reconnaissance spike answered. This is the reference for
 anyone writing a decoder.
 
+**[capability-matrix.md](capability-matrix.md)** — what the server can
+read, from which endpoint, at what verification level, and what would move
+each open row forward. The single source of truth for completeness.
+
 **[design-spec.md](design-spec.md)** — why the server is shaped the way it
 is. Tool surface, failure semantics, the derived-vs-measured rule, and the
 storage decision.

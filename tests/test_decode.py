@@ -250,10 +250,13 @@ def test_unidentified_sport_is_named_as_unknown_not_guessed(history_rows):
     """Every code in the corpus is now identified, so use a synthetic one:
     an unrecognised sport must degrade to a plain label, not a guess."""
     row = dict(next(r for r in history_rows if r["type"] == 22))
-    row["type"] = 99
+    # 99 used to be unmapped; it is now a catalogued name (wrestling), so the
+    # synthetic code is one no source names at all.
+    row["type"] = 999
     item = workouts.normalise(row)
-    assert item["sport"] == "unknown_sport_99"
-    assert item["sport_code"] == 99
+    assert item["sport"] == "unknown_sport_999"
+    assert item["sport_code"] == 999
+    assert item["sport_name_confidence"] == "unknown"
     # The data is still exposed, just not mislabelled.
     assert item["summary"]["calorie"] > 0
     assert item["unclassified_metrics"]
