@@ -9,6 +9,16 @@ account, region, or machine.
 
 ---
 
+> **Implementation status (2026-10-31).** The in-memory cache with a
+> short TTL for today (§5), cursor pagination inside `client.py` (§5),
+> partial-failure reporting (§6), the derived-vs-measured labelling (§6)
+> and the metric catalogue (`metrics.py`, §5) are implemented. The
+> analysis layer is `analysis.py`. The tool surface grew beyond §7's eight
+> where questions needed it. `zepp_get_timeseries` became
+> `zepp_health_metrics`, and workout analytics became `zepp_workout_stats`.
+> The opt-in archive is still not built, deliberately. See
+> [capability-matrix.md](capability-matrix.md).
+
 ## 1. What changed from ARCHITECTURE.md
 
 | Area | ARCHITECTURE.md | This spec | Why |

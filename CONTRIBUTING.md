@@ -94,9 +94,11 @@ Good first contributions, roughly in order of value:
 2. **Confirm a flagged unit.** Anything with `unit_verified: false`, plus the
    `te` / `anaerobic_te` scaling question. Compare a value against what the
    Zepp app displays for the same workout.
-3. **Add a tool for an unmodelled metric.** PAI, SpO₂, stress, HRV,
-   respiratory rate, readiness, Body Charge and weight all return data but
-   are reachable only through `zepp_raw_request`.
+3. **Run the endpoint probe.** `uv run tools/probe_candidates.py` tests
+   every open hypothesis in [docs/capability-matrix.md](docs/capability-matrix.md)
+   next to a negative control, and prints key names and counts only, never
+   values. Paste its output into an issue. A non-empty result moves a row
+   to level 1.
 4. **Test multisport.** No triathlon has ever been recorded against this
    code. If you have one, an anonymised fixture would be genuinely valuable.
 5. **The GPS decoder.** Untested by design, since the corpus excludes
@@ -185,7 +187,14 @@ def test_distance_stream_matches_the_summary_total(swim_detail, history_rows):
 That test would fail if the encoding assumption were wrong, which a
 hand-written expected value would not.
 
-Tests must not require network or credentials. All 28 run against the corpus.
+Tests must not require network or credentials. All 220 offline tests run
+against the corpus, and the client and tool layers run against an
+`httpx.MockTransport` that serves it (`tests/test_server.py`). Live checks
+live in `tests/test_live.py`, are skipped unless `ZEPP_LIVE=1`, and never
+run in CI.
+
+When a capability's verification level changes, update both
+`zepp_mcp/metrics.py` and `docs/capability-matrix.md`.
 
 ## Decoding new fields
 
@@ -204,7 +213,12 @@ When adding a decoder:
 - **Watch the type.** Zepp sends the same field as a string in one endpoint
   and an integer in another. Coerce before comparing.
 - **Pass through what you don't know.** Unrecognised fields belong under
-  `raw`, untouched.
+  `raw`, untouched, or under a name ending `_unverified`.
+- **Label what you compute.** Anything the server calculates (aggregates,
+  efficiencies, trends) carries a `method` string beginning `derived:`.
+- **Never pass location or secrets through raw.** Split rows embed a
+  geohash and device records a pairing key. Strip them at decode time and
+  allowlist rather than blocklist.
 
 The failure mode this guards against is specific: the consumer is an LLM that
 will restate whatever it is given as fact. A wrongly decoded stream does not

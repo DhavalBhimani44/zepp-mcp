@@ -405,3 +405,109 @@ reused-field pattern already documented for a run — and stay unexposed for
 the same reason. `rope_skipping_rest_time` was `-1` on the only skipping
 session captured; unconfirmed either way, so it stays unexposed rather than
 guessed.
+
+---
+
+## Fixture re-analysis and external survey — 2026-10-31
+
+This session had no account credentials, so nothing here is live-verified.
+Instead the committed corpus was re-read for fields nobody had decoded yet,
+and every new decoder was pinned to a **second quantity** in the same
+corpus. Fifteen open-source Zepp/Huami clients were surveyed for request
+shapes, taking facts only. Status per capability is in
+[capability-matrix.md](capability-matrix.md).
+
+### The event families were already in the corpus
+
+Fixtures 022–038 (captured in August) held real readiness, HRV, respiratory
+rate, stress, PAI, SpO₂ and Body Charge data that no tool exposed. They
+cross-check against each other and against band_data more tightly than
+anything else in the API:
+
+| Check | Result |
+|---|---|
+| readiness `sleepRHR` vs band_data `slp.rhr` | equal, 6/6 nights |
+| readiness `sleepHRV` vs mean per-minute `HRVRMSSD` inside `[st, ed]` | within 1 ms, 6/6 nights (54.1→54, 28.5→29, 47.6→47, …) |
+| all_day_stress `min/max/avg` and `*Proportion` vs its own `data` series | exact, 6/6 days, zones <40 / 40–59 / 60–79 / ≥80 |
+| ODI `odi` vs `odiNum / (cost/3600)` | equal to 2 dp (truncated), 4/4 nights; `cost` == sleep duration |
+| RespiratoryRate first non-zero minute vs band_data sleep onset | within 5 min; index 0 = item `timestamp` (UTC midnight) |
+| PaiHealthInfo `totalPai` vs running sum of `dailyPai` | equal for the first 7 days; `dailyPai` capped at 75 |
+| DailyHealth `totalSteps`/`totalCalories` vs band_data `ttl`/`cal` | equal, 7/7 days |
+| Body Charge `total` vs mean(`mental`, `physical`) | within 1 |
+
+Shapes worth recording:
+
+* **v2 metadata strings are count-prefixed**: `"timeZone": "279,Asia/Calcutta"`
+  on an item with 279 samples. The zone is the part after the last comma.
+* **Legacy zone aliases.** Readiness and HRV events say `Asia/Calcutta`, and
+  workouts from the same watch say `Asia/Kolkata`. Minimal tz databases lack
+  the alias, and falling back to UTC silently moved every morning score onto
+  the previous day. Aliases are now mapped.
+* **255 is "not computed"** across readiness, PAI and Body Charge. 32767
+  marks an uncalibrated skin-temperature baseline.
+* **Body Charge before pairing** returns twenty days of an app-generated
+  curve (`deviceId: "app"`, `total: 255`, identical mental/physical shapes
+  day after day). Those are a model, not data, and are excluded.
+* **v1 stress and PAI carry no timezone.** Their timestamps are local
+  midnight, so the server takes the user's zone from `ZEPP_TIMEZONE` or the
+  system.
+
+### band_data: three more decodes
+
+* **`data` byte 2 is steps per minute.** It sums to `ttl` on 8/8 days and
+  reproduces every one of the 97 step-stage totals. That also proves stage
+  `start`/`stop` are minute-of-local-day indices.
+* **`slp.obt/ebt/is/lb` form exact identities on 7/7 nights:**
+  `st == obt + is`, `ebt == ed + lb`, and `lt+dp+dt+wk == (ed−st)/60`. So
+  `obt` and `ebt` are into bed and out of bed (minutes from the wake date's
+  local midnight), `is` is sleep latency and `lb` is time lingering after
+  waking. Time in bed and efficiency follow from them.
+* **`stp.runDist` is not run distance.** It is 79–81% of `dis` every day,
+  including days with no run (3150 of 3918 m), while the day's actual run
+  was 3363 m. It had been emitted as `run_distance_metres`; it is now
+  `runDist_raw_unverified`.
+
+### Workout rows and details
+
+* `totalTimeWithMillis == exerciseTimeWithMillis + pauseTimeWithMillis`
+  within 4 ms on 8/8 workouts, and `run_time` is the moving time truncated.
+  An 8268 s hike had 2291 s paused, so pace must use moving time.
+* `strength_training_group` matches the strength detail's lap rows 19/19 in
+  reps (lap col 22) and exercise code (col 28). Col 21 rises 15 → 17.5 → 20
+  within an exercise, the shape of added load, but its unit is unstated.
+  `total_group` (20) can exceed the recorded sets (19).
+* `kilo_pace` column 2 is a **geohash**: the split's end location. It is
+  stripped at decode time. Before this session, `include=["streams"]`
+  passed the whole field through raw.
+* `gait` columns 2 and 3 are stride (cm) and cadence (spm): their mean is
+  73.6 against the row's 74, and the cadence maximum equals
+  `max_frequency` exactly.
+* `add_info.adjust_dem_altitude` holds terrain-model elevation, which
+  disagrees with the barometric figures by design (359.6 vs 279.6 m gain).
+
+### What other clients add (level 3 until probed)
+
+* `WatchSportStatistics/{SPORT_LOAD,VO2_MAX}` takes `startDay`, `endDay`,
+  `limit` and `isReverse` (four clients agree). The original probe sent
+  none, which plausibly explains its HTTP 500. The server now sends them
+  and returns the result **undecoded**.
+* Devices: `GET /users/{uid}/devices?enableMultiDevice=true`. Items carry
+  `additionalInfo.auth_key`, the Bluetooth pairing secret, so device output
+  goes through an **allowlist**, never a blocklist.
+* History paging: `trackid=<data.next>` (legacy form, two clients) or
+  `startTrackId/stopTrackId` (app form). The legacy form is used, guarded
+  against a repeating page.
+* Cloud sport `type` is a different namespace from the watch's Bluetooth
+  sport enum for low codes. External cloud tables call 8 "treadmill"; the
+  owner-confirmed name here is walking (outdoor, GPS splits), so it stands.
+  Six codes with ≥2 independent cloud sources were added as `corroborated`.
+* Event types seen elsewhere but not here: `exertion/algo_result`
+  (ATL/CTL/TSB), `Charge/insight_data`, `sport/recovery_hr`,
+  `skinTemp/real_data`, `phn/*`, `EmotionBaseline/real_data`. All are in
+  `tools/probe_candidates.py` with a fabricated-type control. An empty 200
+  from that control proves the events route cannot tell you a type is
+  unknown.
+* One client documents a password-free token refresh
+  (`/v1/client/app_tokens?login_token=`), but only on Chinese hosts under
+  the Zepp Life app name. It is not used: unverified for global accounts,
+  and a wrong guess costs a login attempt.

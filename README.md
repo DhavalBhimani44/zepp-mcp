@@ -72,8 +72,22 @@ real captured responses.
   skipping.
 - **Sleep with all four stages.** Light, deep, REM and awake, not just the
   two most implementations report.
-- **Per-minute heart rate**, with no-reading markers preserved as `null`
-  rather than dropped.
+- **Sleep in depth.** Latency, time in bed and efficiency, plus each
+  morning's overnight HRV, readiness score, sleep respiratory rate and
+  overnight SpO₂ (ODI), for one night or a whole month.
+- **Recovery and stress.** Readiness and its sub-scores, HRV (overnight and
+  all-day RMSSD), resting-HR trend, all-day stress, PAI, Body Charge,
+  respiratory rate, SpO₂ spot checks and daily goals, each with a summary
+  and a trend line.
+- **Training analytics.** Volume by week, month or sport. Aggregate pace
+  computed correctly: total distance over total moving time, never an
+  average of paces. Records within a range, Zepp's own personal-best
+  flags, and progression series for 20 metrics (SWOLF, pace, cadence,
+  VO₂ max, ground contact time, …).
+- **One-call overviews.** *"How have the last 30 days gone?"* is a single
+  tool call.
+- **Per-minute heart rate and steps**, with no-reading markers preserved as
+  `null` rather than dropped, and hourly step totals.
 - **Lactate threshold HR and pace**, tracked over time from the watch's own
   estimate log — the anchor for every training zone — plus VO2 max, per-run
   time-in-zone distribution and, once a Zepp Coach plan is active, per-session
@@ -81,7 +95,10 @@ real captured responses.
 - **Running dynamics**: ground contact time, vertical oscillation, running
   power and stride ratio, alongside the elevation and climb fields runs share
   with hikes and rides.
-- **Lap and stream decoding** for individual workouts.
+- **Lap and stream decoding** for individual workouts: per-length swim
+  laps, per-set strength sets (reps, load, rest), km splits, cadence and
+  stride per second, and pauses. Moving and paused time are separated on
+  every workout.
 - **Smart-scale body composition.** Weight, height and BMI, plus body fat,
   water and muscle percentages, bone mass, visceral fat and BMR when synced
   from a real bio-impedance scale rather than a manual entry.
@@ -187,7 +204,7 @@ chmod 600 .env
 Verify it works — the test suite needs no network and no credentials:
 
 ```bash
-uv run pytest              # 28 tests against the fixture corpus
+uv run pytest              # 220 tests against the fixture corpus
 uv run tools/smoke_test.py # starts the server, lists its tools
 ```
 
@@ -262,9 +279,9 @@ flowchart TB
 
         subgraph proc["zepp-mcp · local child process"]
             direction TB
-            tools["<b>server.py</b><br/>8 MCP tools"]
-            norm["<b>workouts.py · decode.py · codes.py</b><br/>stream decoding · lap splitting<br/>sentinel stripping · unit attribution"]
-            http["<b>client.py</b><br/>empty-200 classifier · re-auth once"]
+            tools["<b>server.py</b><br/>14 MCP tools"]
+            norm["<b>workouts.py · decode.py · events.py · analysis.py</b><br/>stream decoding · lap splitting · event decoding<br/>sentinel stripping · unit attribution · aggregates"]
+            http["<b>client.py</b><br/>empty-200 classifier · re-auth once<br/>pagination · in-memory cache · pacing"]
             auth["<b>auth.py</b><br/>password login · region discovery"]
             tools --> norm
             norm --> http
@@ -301,16 +318,36 @@ does not mean a fresh login against Zepp's shared 10-attempt lockout.
 
 | Tool | Returns |
 | --- | --- |
-| `zepp_daily_summary` | Steps, distance, calories and sleep per day |
-| `zepp_sleep` | One night: light / deep / REM / awake minutes, score, resting HR |
+| `zepp_period_summary` | One-call overview of a period: activity, sleep, workouts, readiness, HRV, resting HR, stress, PAI |
+| `zepp_daily_summary` | Steps, distance, active calories, activity periods and sleep per day, for any range; optional hourly steps |
+| `zepp_sleep` | One night or a range: stages, score, latency, time in bed, efficiency, naps, overnight HRV, respiratory rate, SpO₂ |
+| `zepp_health_metrics` | `readiness`, `hrv`, `resting_heart_rate`, `respiratory_rate`, `stress`, `spo2`, `pai`, `body_charge`, `daily_goals`, each with summary and trend |
 | `zepp_heart_rate` | Per-minute heart rate for a day, plus statistics |
-| `zepp_list_workouts` | All workouts, all sports, with sport-specific metrics |
-| `zepp_workout_detail` | Laps, time-series streams and GPS for one workout |
-| `zepp_training_thresholds` | Lactate threshold HR/pace and VO2 max, with how they've moved over time |
+| `zepp_list_workouts` | All workouts, all sports, paginated, with sport-specific metrics, moving time, derived pace, zones and sets |
+| `zepp_workout_stats` | Volume by week/month/year/sport, records, and per-workout progression for 20 metrics |
+| `zepp_workout_detail` | Laps, strength sets, km splits, pauses, streams (HR, speed, cadence, stride) and GPS for one workout |
+| `zepp_training_thresholds` | Lactate threshold HR/pace and VO2 max over time |
 | `zepp_body_composition` | Smart-scale weight, BMI, and (real scale sync only) body fat/water/muscle %, bone mass, visceral fat, BMR |
-| `zepp_describe_schema` | What the server knows, and where decoding is uncertain |
+| `zepp_profile` | Height, weight, age, wear hand, paired devices. Never names, locations or device keys |
+| `zepp_describe_schema` | The metric catalogue: units, sources, verification level, known gaps |
 | `zepp_raw_request` | Arbitrary GET, for endpoints not modelled yet |
 | `zepp_auth_status` | Token expiry and region host |
+
+Every value says whether it was **measured** by the watch or **derived** by
+the server (aggregate pace, weighted averages, trends), and every metric
+carries a verification level. The full inventory, with evidence per row,
+is in [docs/capability-matrix.md](docs/capability-matrix.md).
+
+### Configuration
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `ZEPP_EMAIL`, `ZEPP_PASSWORD` | — | Credentials, from `.env` or the environment |
+| `ZEPP_TIMEZONE` | system zone | IANA zone for data that carries none (stress, PAI) |
+| `ZEPP_TOKEN_CACHE` | `~/.zepp-mcp/token.json` | Path, or `off` |
+| `ZEPP_RESPONSE_CACHE` | on | In-memory response cache; `off` disables it. Never written to disk |
+| `ZEPP_MIN_REQUEST_INTERVAL` | `0.35` | Seconds between outbound requests |
+| `ZEPP_DEBUG` | off | Re-enables httpx request logging (which includes your user id) |
 
 ## Privacy
 
@@ -318,7 +355,9 @@ This is health data. The design reflects that.
 
 - **Nothing is hosted.** `zepp-mcp` is a local stdio process. There is no
   backend I run, no account to create, and no relay your data passes through.
-- **No health data is written to disk.** Every call fetches live.
+- **No health data is written to disk.** Responses are cached in memory for
+  the life of the process only (ranges that reach today expire after five
+  minutes), so a conversation does not refetch the same month.
 - **Only the API token is cached**, at `~/.zepp-mcp/token.json` (mode `0600`).
   Set `ZEPP_TOKEN_CACHE=off` to disable and log in every time.
 - **Credentials live in `.env`**, never in client config files, never in
@@ -328,6 +367,12 @@ This is health data. The design reflects that.
   on any name, MAC address, serial number, email, coordinate stream or
   credential-shaped token. GPS-bearing workouts are excluded entirely — a
   running route starts where you live.
+- **Location never reaches the model by accident.** Split rows embed a
+  geohash of where each kilometre ended; it is stripped at decode time.
+  GPS streams are returned only when explicitly requested.
+- **Device secrets are allowlisted out.** Device records carry the watch's
+  Bluetooth pairing key. Only named, safe fields (model, firmware, data
+  source id) are ever returned.
 
 If you contribute a fixture, run `uv run tools/anonymize_fixtures.py` first,
 and install the pre-push hook — force pushes are blocked on `main`, so a bad
@@ -425,17 +470,17 @@ time too.
 
 | Gap | Detail |
 | --- | --- |
-| Lap column names | Columns 1, 13 and 14 are confirmed (duration, strokes, SWOLF — see [examples](examples/README.md#how-this-example-resolved-a-documented-gap)). The remaining named columns are inferred, and anything outside the named set is returned raw. |
-| `pool_swim_pace` | Unit unconfirmed; flagged `unit_verified: false`. |
-| RTPC | Present on every sport (`avg_rtpc_unverified` and friends), reads a constant 21 outside running, but its meaning is unconfirmed — exposed anyway rather than dropped, flagged as unverified. |
-| Cumulative training load | Per-session `exercise_load` is available; the rolling figure is not. `WatchSportStatistics/SPORT_LOAD` returns HTTP 500 server-side. VO2 max itself IS available — see `zepp_training_thresholds`. |
-| Some endpoints | `manualData`, `bloodPressure` and `heartRate` return HTTP 400 — they need parameters not yet worked out. |
-| Multisport | `parent_trackid` / `child_list` handling is built but untested; no triathlon has been recorded yet. |
-| GPS decoding | Untested. The corpus deliberately excludes GPS-bearing workouts. |
-| Zepp Coach | No dedicated endpoint across 22 probed routes with controls ([details](docs/api-findings.md#training-plans--confirmed-2026-09-03)). Plan progress is confirmed to arrive through the workout row instead — `dailyScore`, `dailyPlanFinished` and `runningProgram` populate once a plan is active, exposed as `training_plan` in `zepp_list_workouts`. `course_title` and `coachInsight` remain unconfirmed, still empty on every run observed. |
-| Metrics without dedicated tools | PAI, SpO₂, stress, HRV, respiratory rate, readiness and Body Charge return real data via `zepp_raw_request`. (A classifier bug used to report all of these as empty regardless of content — fixed; see [api-findings.md](docs/api-findings.md#the-_is_empty-classifier-only-checked-for-a-data-key).) |
-| `zepp_body_composition` fields | `weight_kg`/`height_cm`/`bmi` are verified (bmi reproduces weight / (height/100)²). Everything under `body_composition` (fat/water/muscle %, bone mass, BMR, visceral fat, body score) uses a schema sourced from a different open-source Zepp API client's documented real-scale capture, not from an account this project holds — see [api-findings.md](docs/api-findings.md#body-composition-scale-readings--confirmed-2026-09-05). `bmi_consistent: false` marks records (typically manual/HealthKit entries) whose own weight/height/bmi don't reconcile. |
-| Sport code 16 (`free_training`) | Named by elimination, not by a positive payload signature — no field is prefixed for it the way `ride_`/`rope_skipping_` are for codes 9/21. See [api-findings.md](docs/api-findings.md#two-more-sport-codes--confirmed-2026-09-15) and `zepp_describe_schema`. |
+| Live verification | The 2026-10-31 expansion was verified against the committed corpus, not a live account. [`tools/probe_candidates.py`](tools/probe_candidates.py) settles the open rows; `ZEPP_LIVE=1 uv run pytest tests/test_live.py` checks every tool live. |
+| Rolling training load, VO₂ max series | `WatchSportStatistics` is now called with the parameters other clients use, but its response has never been captured, so it is returned undecoded. Per-workout `exercise_load` and `VO2_max` are verified. |
+| Strength exercise names | Sets, reps, per-set load and rest are decoded; exercise codes have no verified name table. The load column's unit (kg or lb) is unverified. |
+| Lap column names | Swim columns 1, 13 and 14 and strength columns 1/4/5/21/22/28 are confirmed. The rest are inferred or raw. |
+| `pool_swim_pace`, HRV SDNN, skin-temperature offset, Body Charge components | Units or meanings unconfirmed; flagged `_unverified`. |
+| RTPC | Present on every sport, reads a constant 21 outside running, meaning unconfirmed. |
+| Per-second HR, Body Charge stress blob, ECG, blood pressure, women's health | Index or route discovered but not decodable or not populated on any account available here. See the [capability matrix](docs/capability-matrix.md). |
+| Multisport, GPS decoding | Built but untested: no triathlon recorded, and GPS workouts are deliberately excluded from the corpus. |
+| Sport codes | 9 confirmed, 6 more corroborated by independent clients (flagged `sport_name_confidence: "corroborated"`). External tables call code 8 "treadmill"; it is confirmed as an outdoor walk here. Code 16 is named by elimination. |
+| Zepp Coach | No dedicated endpoint across 22 probed routes ([details](docs/api-findings.md#training-plans--confirmed-2026-09-03)). Plan progress arrives through the workout row as `training_plan`. |
+| `zepp_body_composition` fields | Fat/water/muscle/bone/BMR use a schema from a community capture (AlexxIT/SmartScaleConnect), not this project's own data. |
 
 Help with any of these is welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -451,12 +496,16 @@ load against recovery, and within-session pacing decay.
 zepp_mcp/           the server
   auth.py           password login, region discovery, token cache
   client.py         HTTP, empty-200 classification, re-auth
-  decode.py         band data, workout streams, laps
+  decode.py         band data, workout streams, laps, splits, gait
+  events.py         readiness, HRV, respiratory rate, stress, PAI, SpO2, Body Charge
   workouts.py       index row -> normalised, sport-aware summary
+  analysis.py       aggregates, records, trends (all derived, all labelled)
+  metrics.py        metric catalogue: units, sources, verification levels
   codes.py          sport codes, sleep stages, sentinels
+  body.py           scale readings, profile, device allowlist
   server.py         MCP tool definitions
 examples/           runnable analyses with real output
-tools/              anonymiser, privacy gate, smoke test
+tools/              anonymiser, privacy gate, smoke test, endpoint probe
 tests/fixtures/     anonymised real API captures
 docs/               design spec and API reverse-engineering findings
 spike/              the throwaway probe that produced the fixtures
