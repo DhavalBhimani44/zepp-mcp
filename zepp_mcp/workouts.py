@@ -13,11 +13,15 @@ from __future__ import annotations
 import datetime as dt
 import json
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from . import decode
-from .codes import (TRAINING_EFFECT_SCALE, clean, sport_name,
-                    training_effect_band)
+from . import decode, events
+from .codes import (
+    TRAINING_EFFECT_SCALE,
+    clean,
+    sport_confidence,
+    sport_name,
+    training_effect_band,
+)
 
 # Fields worth surfacing per sport, in the sport's own terms. A field is only
 # emitted when it is not that field's not-applicable sentinel.
@@ -115,6 +119,10 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
 _BLOCK_FOR_CODE: dict[int, str] = {
     1: "foot", 8: "foot", 9: "ride", 14: "swim", 16: "free_training",
     18: "field_sport", 21: "rope_skipping", 22: "hike", 52: "strength",
+    # Corroborated codes (codes.CORROBORATED_SPORT_CODES): on-foot and ride
+    # blocks only, since those field sets are sport-agnostic sentinelled
+    # fields; anything else stays unclassified rather than guessed.
+    6: "foot", 7: "foot", 10: "ride",
 }
 
 # Running biomechanics, nested under foot["running_dynamics"] rather than
@@ -307,13 +315,7 @@ def _zone(row: dict[str, Any]) -> dt.tzinfo:
     An 08:04 swim rendered in UTC becomes 02:34, which looks like a different
     session entirely when the user scans a list by time of day.
     """
-    name = row.get("syncedTimezone")
-    if isinstance(name, str) and name.strip():
-        try:
-            return ZoneInfo(name.strip())
-        except (ZoneInfoNotFoundError, ValueError):
-            pass
-    return dt.UTC
+    return events.zone(row.get("syncedTimezone"), dt.UTC)
 
 
 def _iso(value: object, tzinfo: dt.tzinfo = dt.UTC) -> str | None:
@@ -409,6 +411,157 @@ def _training_plan_block(row: dict[str, Any]) -> dict[str, Any] | None:
     return block
 
 
+def _ms_seconds(value: object) -> float | None:
+    number = _numeric(value)
+    return round(number / 1000, 1) if number is not None and number >= 0 else None
+
+
+def _timing(row: dict[str, Any]) -> dict[str, Any]:
+    """Moving, paused and total time.
+
+    VERIFIED on all eight workouts in the corpus: totalTimeWithMillis ==
+    exerciseTimeWithMillis + pauseTimeWithMillis (to within 4 ms), and
+    `run_time` is exerciseTimeWithMillis truncated to seconds. Moving time is
+    the right denominator for pace -- an 8268 s hike with 2291 s paused has a
+    pace over 5977 s, not over the wall clock.
+    """
+    out: dict[str, Any] = {}
+    moving = _ms_seconds(row.get("exerciseTimeWithMillis"))
+    total = _ms_seconds(row.get("totalTimeWithMillis"))
+    paused = _ms_seconds(row.get("pauseTimeWithMillis"))
+    if moving is not None:
+        out["moving_time_seconds"] = moving
+    if total is not None:
+        out["total_time_seconds"] = total
+    if paused is not None:
+        out["paused_seconds"] = paused
+    elif moving is not None and total is not None and total >= moving:
+        out["paused_seconds"] = round(total - moving, 1)
+    return out
+
+
+def _distance_metres(row: dict[str, Any]) -> float | None:
+    """`highPrecisionDistance` carries the decimals `dis` rounds away
+    (1064.37 against "1064.0"); both are metres."""
+    for key in ("highPrecisionDistance", "dis"):
+        number = _numeric(row.get(key))
+        if number is not None and number > 0:
+            return round(number, 2)
+    return None
+
+
+def _derived_pace(distance: float | None, moving: float | None,
+                  swim: bool = False) -> dict[str, Any] | None:
+    """Pace and speed computed from total distance over moving time.
+
+    DERIVED, and labelled so: it is the session aggregate, not an average of
+    per-split paces (which over-weights slow splits), and it may differ
+    slightly from Zepp's own avg_pace, which uses Zepp's own internal timing.
+    """
+    if not distance or not moving or distance < 1:
+        return None
+    sec_per_km = moving / distance * 1000
+    if swim:
+        # Swimmers read pace per 100 m, not per km.
+        per_100 = sec_per_km / 10
+        return {
+            "pace_sec_per_100m": round(per_100, 1),
+            "pace": f"{int(per_100) // 60}:{int(per_100) % 60:02d}/100m",
+            "speed_kmh": round(distance / moving * 3.6, 2),
+            "method": "derived: distance_metres / moving_time_seconds",
+        }
+    return {
+        "pace_sec_per_km": round(sec_per_km, 1),
+        "pace": f"{int(sec_per_km) // 60}:{int(sec_per_km) % 60:02d}/km",
+        "speed_kmh": round(distance / moving * 3.6, 2),
+        "method": "derived: distance_metres / moving_time_seconds",
+    }
+
+
+def _sets(row: dict[str, Any]) -> dict[str, Any] | None:
+    """Per-set repetition counts from `strength_training_group`.
+
+    VERIFIED on a strength session: the 19 entries match the detail
+    payload's 19 lap rows one for one, in both rep count and exercise code
+    (see decode.STRENGTH_LAP_COLUMNS). On rope skipping the counts sum to
+    the session's jump total. Only read for strength and rope skipping:
+    runs and swims carry a stale copy from an unrelated session.
+
+    `total_group` can exceed the number of recorded sets (20 vs 19, 15 vs
+    13 in the corpus) -- both numbers are reported, neither is reconciled.
+    Exercise codes are the watch's own; no name table has been verified.
+    """
+    raw = row.get("strength_training_group")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return None
+    if not isinstance(raw, list):
+        return None
+    sets = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        reps = _numeric(entry.get("count"))
+        if reps is None or reps <= 0:
+            continue
+        item: dict[str, Any] = {"reps": int(reps)}
+        code = _numeric(entry.get("actionType"))
+        if code is not None:
+            item["exercise_code"] = int(code)
+        sets.append(item)
+    if not sets:
+        return None
+    out: dict[str, Any] = {
+        "sets_recorded": len(sets),
+        "total_reps": sum(s["reps"] for s in sets),
+        "sets": sets,
+    }
+    exercises: dict[int, dict[str, int]] = {}
+    for item in sets:
+        if "exercise_code" in item:
+            bucket = exercises.setdefault(item["exercise_code"], {"sets": 0, "reps": 0})
+            bucket["sets"] += 1
+            bucket["reps"] += item["reps"]
+    if exercises:
+        out["by_exercise_code"] = {str(k): v for k, v in exercises.items()}
+    rest = _ms_seconds(row.get("restTimeBetweenGroupsWithMillis"))
+    if rest:
+        out["rest_between_sets_seconds"] = rest
+    return out
+
+
+def _dem_elevation(row: dict[str, Any]) -> dict[str, Any] | None:
+    """Elevation re-computed against a terrain model (DEM), from `add_info`.
+
+    Present on hikes with `useDEM: true`. It disagrees with the barometric
+    figures on the same row (359.6 m gain against 279.6 m), which is the
+    point of it: both are reported, under distinct names, and neither
+    overwrites the other. Values are metres -- avg/max/min sit within 20 m
+    of the row's own metre-valued altitude fields.
+    """
+    info = row.get("add_info")
+    if isinstance(info, str):
+        try:
+            info = json.loads(info)
+        except ValueError:
+            return None
+    dem = info.get("adjust_dem_altitude") if isinstance(info, dict) else None
+    if not isinstance(dem, dict):
+        return None
+    out = {}
+    for src, key in (("elevationGain", "elevation_gain_metres"),
+                     ("elevationLoss", "elevation_loss_metres"),
+                     ("avgAltitude", "avg_altitude_metres"),
+                     ("maxAltitude", "max_altitude_metres"),
+                     ("minAltitude", "min_altitude_metres")):
+        number = _numeric(dem.get(src))
+        if number is not None and number > -1000:
+            out[key] = round(number, 1)
+    return out or None
+
+
 def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
     code = row.get("type")
     start = _epoch(row.get("trackid"))
@@ -420,6 +573,7 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
         "source": row.get("source"),
         "sport": sport_name(code),
         "sport_code": code,
+        "sport_name_confidence": sport_confidence(code),
         "start_local": _iso(row.get("trackid"), zone),
         "end_local": _iso(row.get("end_time"), zone),
         "timezone": row.get("syncedTimezone") or "UTC",
@@ -428,6 +582,16 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
         out["elapsed_seconds"] = end - start
 
     out["summary"] = _collect(row, COMMON_FIELDS)
+    timing = _timing(row)
+    out["summary"].update(timing)
+    distance = _distance_metres(row)
+    if distance is not None:
+        out["summary"]["distance_metres"] = distance
+    code_value = _numeric(code)
+    derived = _derived_pace(distance, timing.get("moving_time_seconds"),
+                            swim=_BLOCK_FOR_CODE.get(int(code_value or -1)) == "swim")
+    if derived:
+        out["derived"] = derived
 
     code_number = _numeric(code)
     block = _BLOCK_FOR_CODE.get(int(code_number) if code_number is not None else -1)
@@ -435,6 +599,14 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
         detail = _collect(row, SPORT_FIELDS[block])
         if detail:
             out[block] = detail
+        if block in ("strength", "rope_skipping"):
+            sets = _sets(row)
+            if sets:
+                out.setdefault(block, {})["sets"] = sets
+        if block in ("foot", "hike", "ride"):
+            dem = _dem_elevation(row)
+            if dem:
+                out["dem_elevation"] = dem
         if block == "foot":
             dynamics = _collect(row, RUNNING_DYNAMICS_FIELDS)
             if dynamics:

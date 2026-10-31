@@ -25,7 +25,6 @@ from typing import Any
 
 from .codes import HR_BYTE_SENTINELS, SLEEP_STAGE_MODES, clean
 
-
 # --------------------------------------------------------------------------
 # Daily band data
 # --------------------------------------------------------------------------
@@ -62,9 +61,17 @@ def summarise_day(row: dict[str, Any]) -> dict[str, Any]:
         "steps": steps.get("ttl"),
         "distance_metres": steps.get("dis"),
         "calories_kcal": steps.get("cal"),
-        "run_distance_metres": steps.get("runDist"),
         "step_goal": summary.get("goal"),
     }
+    # `runDist` was previously emitted as run_distance_metres. It is not: it
+    # sits at 79-81 % of `dis` on every day in the corpus, including days
+    # with no run at all (3150 of 3918 m), while the day's actual run
+    # distance (3363 m, from DailyHealth and the workout itself) is a
+    # different number. Kept, under a name that does not claim a meaning.
+    if steps.get("runDist") is not None:
+        out["runDist_raw_unverified"] = steps.get("runDist")
+    if isinstance(steps.get("stage"), list) and steps["stage"]:
+        out["activity_periods"] = _activity_periods(steps["stage"])
 
     max_hr = (summary.get("hr") or {}).get("maxHr") or {}
     if max_hr.get("hr"):
@@ -73,6 +80,74 @@ def summarise_day(row: dict[str, Any]) -> dict[str, Any]:
     if sleep:
         out["sleep"] = _sleep_block(sleep, _tz(summary))
     return out
+
+
+# Step-stage modes. VERIFIED that every stage's `step` total equals the sum
+# of the per-minute step bytes over its [start, stop] minutes (97 of 97
+# stages), so the minute indexing is certain. The NAMES are not: the payload
+# carries none. Mode 4's stages run at ~150 steps/min and ~2.4 m/s, the
+# signature of running; mode 3 at ~90-100 steps/min, brisk walking; modes 1
+# and 7 at well under 30 steps/min. Cadence and speed are returned per
+# stage so a caller can see the evidence rather than trust the label.
+ACTIVITY_STAGE_MODES: dict[int, str] = {
+    1: "light_activity_mode_1",
+    3: "walking",
+    4: "running",
+    7: "light_activity_mode_7",
+}
+
+
+def _activity_periods(stages: list[Any]) -> dict[str, Any]:
+    by_mode: dict[str, dict[str, float]] = {}
+    for stage in stages:
+        if not isinstance(stage, dict):
+            continue
+        try:
+            minutes = int(stage["stop"]) - int(stage["start"]) + 1
+        except (KeyError, TypeError, ValueError):
+            continue
+        name = ACTIVITY_STAGE_MODES.get(stage.get("mode"),
+                                        f"unknown_mode_{stage.get('mode')}")
+        bucket = by_mode.setdefault(name, {"minutes": 0, "steps": 0,
+                                           "distance_metres": 0, "periods": 0})
+        bucket["minutes"] += minutes
+        bucket["steps"] += stage.get("step") or 0
+        bucket["distance_metres"] += stage.get("dis") or 0
+        bucket["periods"] += 1
+    for bucket in by_mode.values():
+        if bucket["minutes"]:
+            bucket["steps_per_minute"] = round(bucket["steps"] / bucket["minutes"], 1)
+    return by_mode
+
+
+def decode_activity_minutes(encoded: str) -> list[dict[str, int]] | None:
+    """`data` is three bytes per minute of the local day, 1440 minutes.
+
+    Byte 2 is the minute's step count -- VERIFIED: it sums to the day's
+    `ttl` exactly on all eight days in the corpus, and reproduces every
+    step stage's own total. Bytes 0 and 1 vary with activity but have no
+    second quantity to check them against; they are returned raw as
+    `kind_raw` / `intensity_raw`, never as a named measurement.
+    """
+    try:
+        raw = base64.b64decode(encoded)
+    except (ValueError, binascii.Error):
+        return None
+    if not raw or len(raw) % 3:
+        return None
+    return [{"kind_raw": raw[i], "intensity_raw": raw[i + 1], "steps": raw[i + 2]}
+            for i in range(0, len(raw), 3)]
+
+
+def hourly_steps(encoded: str) -> list[int] | None:
+    """Per-hour step totals (24 entries, local hours) from the activity blob."""
+    minutes = decode_activity_minutes(encoded)
+    if minutes is None:
+        return None
+    hours = [0] * ((len(minutes) + 59) // 60)
+    for index, minute in enumerate(minutes):
+        hours[index // 60] += minute["steps"]
+    return hours
 
 
 def _tz(summary: dict[str, Any]) -> dt.tzinfo:
@@ -149,6 +224,8 @@ def _sleep_block(sleep: dict[str, Any],
         if block.get("start_local") == block.get("end_local"):
             block.pop("start_local", None)
             block.pop("end_local", None)
+        else:
+            block.update(_bed_window(sleep, tzinfo, asleep))
     else:
         block["main_sleep_recorded"] = False
         block["note"] = (
@@ -166,6 +243,47 @@ def _sleep_block(sleep: dict[str, Any],
         }
 
     return {k: v for k, v in block.items() if v not in (None, {}, [])}
+
+
+def _bed_window(sleep: dict[str, Any], tzinfo: dt.tzinfo,
+                asleep: int) -> dict[str, Any]:
+    """Time in bed, sleep latency and efficiency.
+
+    Four identities hold on every night in the corpus (7 of 7), which is what
+    pins these fields' meaning rather than their names:
+
+      lt + dp + dt + wk == (ed - st) / 60      the sleep window, in minutes
+      st == obt + is                           `obt` = into bed, `is` = latency
+      ebt == ed + lb                           `ebt` = out of bed, `lb` = lingering
+
+    `obt`/`ebt` are minutes from local midnight of the wake-up date (negative
+    when bedtime was the previous evening). Efficiency is DERIVED: minutes
+    asleep over minutes in bed.
+    """
+    out: dict[str, Any] = {}
+    latency = sleep.get("is")
+    if isinstance(latency, int) and latency >= 0:
+        out["sleep_latency_minutes"] = latency
+    st, ed = sleep.get("st"), sleep.get("ed")
+    window = (ed - st) // 60 if isinstance(st, int) and isinstance(ed, int) else None
+    if window and window > 0:
+        out["sleep_window_minutes"] = window
+    obt, ebt = sleep.get("obt"), sleep.get("ebt")
+    bounded = isinstance(obt, int) and isinstance(ebt, int) and ebt > obt
+    if bounded and isinstance(ed, int):
+        midnight = dt.datetime.fromtimestamp(ed, tzinfo).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        out["in_bed_local"] = (midnight + dt.timedelta(minutes=obt)).isoformat(
+            timespec="minutes")
+        out["out_of_bed_local"] = (midnight + dt.timedelta(minutes=ebt)).isoformat(
+            timespec="minutes")
+        in_bed = ebt - obt
+        out["time_in_bed_minutes"] = in_bed
+        if asleep and in_bed:
+            out["sleep_efficiency_percent"] = round(asleep / in_bed * 100, 1)
+            out["sleep_efficiency_method"] = (
+                "derived: total_asleep_minutes / time_in_bed_minutes")
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -343,6 +461,180 @@ LAP_COLUMNS: dict[int, str] = {
 }
 
 
+# Strength-training lap rows reuse the same ~70-column layout with different
+# columns populated. VERIFIED against the session's own index row: column 22
+# equals `strength_training_group[i].count` and column 28 its `actionType` on
+# 19 of 19 sets; column 43 is column 1 in milliseconds; column 5's last value
+# (4586) matches the session's run_time (4585). Column 21 steps up 15 -> 17.5
+# -> 20 within an exercise, the shape of added load, but nothing in the
+# payload states its unit (kg or lb), so it is flagged.
+STRENGTH_LAP_COLUMNS: dict[int, str] = {
+    0: "set_index",
+    1: "duration_seconds",
+    4: "avg_heart_rate_bpm",
+    5: "elapsed_seconds_cumulative",
+    21: "weight_unit_unverified",
+    22: "reps",
+    28: "exercise_code",
+}
+
+
+def decode_strength_laps(packed: str) -> dict[str, Any]:
+    """One record per set, plus the DERIVED rest before each set
+    (gap between the previous set's end and this set's start)."""
+    rows = [r.split(",") for r in packed.strip().rstrip(";").split(";") if r]
+    sets: list[dict[str, Any]] = []
+    previous_end: float | None = None
+    for row in rows:
+        record: dict[str, Any] = {}
+        for index, name in STRENGTH_LAP_COLUMNS.items():
+            if index < len(row):
+                value = clean(row[index])
+                if value is not None:
+                    record[name] = int(value) if value.is_integer() else value
+        end = record.get("elapsed_seconds_cumulative")
+        duration = record.get("duration_seconds")
+        if previous_end is not None and end is not None and duration is not None:
+            rest = end - duration - previous_end
+            if rest >= 0:
+                record["rest_before_seconds_derived"] = rest
+        previous_end = end if end is not None else previous_end
+        sets.append(record)
+    return {
+        "set_count": len(sets),
+        "total_reps": sum(s.get("reps") or 0 for s in sets),
+        "column_map": STRENGTH_LAP_COLUMNS,
+        "sets": sets,
+        "note": "exercise_code is the watch's own movement id; no name table "
+                "is verified. weight_unit_unverified is the logged load "
+                "without a confirmed unit.",
+    }
+
+
+# --------------------------------------------------------------------------
+# Splits, gait and pauses (detail payload)
+# --------------------------------------------------------------------------
+
+# `kilo_pace` / `mile_pace`: one row per completed km / mile. Column 2 is a
+# GEOHASH of where the split ended -- a location -- and is never decoded or
+# returned. Columns below are corroborated on the corpus's single split (a
+# 1064 m walk): column 1 (855) matches the walk's own 854 s/km pace, column 4
+# its avg HR (125), column 9 its stride (74 cm) and column 13 its cadence
+# (94 vs 93). One split cannot distinguish a per-split value from a running
+# session value, so the extra columns carry that caveat.
+SPLIT_COLUMNS: dict[int, str] = {
+    0: "split_index",
+    1: "split_seconds",
+    # Elapsed time at the split, corroborated by an independent client;
+    # 855 against 855 on the corpus's only split.
+    5: "elapsed_seconds_cumulative",
+    4: "avg_heart_rate_bpm",
+    9: "avg_stride_length_cm",
+    13: "avg_cadence_spm",
+}
+_SPLIT_PRIVATE_COLUMNS = frozenset({2})
+
+
+def decode_splits(packed: str, unit: str = "km") -> dict[str, Any]:
+    rows = [r.split(",") for r in packed.strip().rstrip(";").split(";") if r]
+    splits = []
+    for row in rows:
+        record: dict[str, Any] = {}
+        for index, name in SPLIT_COLUMNS.items():
+            if index < len(row) and index not in _SPLIT_PRIVATE_COLUMNS:
+                value = clean(row[index])
+                if value is not None:
+                    record[name] = int(value) if value.is_integer() else value
+        seconds = record.get("split_seconds")
+        if seconds:
+            record["pace"] = f"{int(seconds) // 60}:{int(seconds) % 60:02d}/{unit}"
+        splits.append(record)
+    fastest = min((s for s in splits if s.get("split_seconds")),
+                  key=lambda s: s["split_seconds"], default=None)
+    out: dict[str, Any] = {
+        "unit": unit, "split_count": len(splits), "splits": splits,
+        "note": "Only split_seconds is verified per split. The HR, stride "
+                "and cadence columns are corroborated on a single-split "
+                "session only. The split's end location is deliberately "
+                "omitted.",
+    }
+    if fastest:
+        out["fastest_split_index"] = fastest.get("split_index")
+    return out
+
+
+def decode_gait(packed: str) -> dict[str, Any]:
+    """`gait`: one `dt,?,stride_cm,cadence_spm` row per second.
+
+    VERIFIED on a walk: column 0 sums to the session's run_time (909 s);
+    column 2 averages 73.6 against the row's avg_stride_length 74 cm; column
+    3 averages 94.9 against avg_frequency 93 and its maximum (107) equals
+    max_frequency exactly. Column 1 is unidentified and not returned. Zeros
+    (the first seconds, before a stride is established) are absences.
+    """
+    elapsed = 0
+    offsets: list[int] = []
+    stride: list[float | None] = []
+    cadence: list[float | None] = []
+    for chunk in packed.strip().rstrip(";").split(";"):
+        parts = chunk.split(",")
+        if len(parts) != 4:
+            return {"note": "unrecognised gait format", "encoding": "unknown"}
+        try:
+            delta, _, stride_cm, spm = (float(p) for p in parts)
+        except ValueError:
+            return {"note": "unrecognised gait format", "encoding": "unknown"}
+        elapsed += int(delta)
+        offsets.append(elapsed)
+        stride.append(stride_cm if stride_cm > 0 else None)
+        cadence.append(spm if spm > 0 else None)
+
+    def stats(values: list[float | None]) -> dict[str, Any]:
+        present = [v for v in values if v is not None]
+        if not present:
+            return {}
+        return {"min": min(present), "max": max(present),
+                "avg": round(sum(present) / len(present), 1)}
+
+    return {
+        "sample_count": len(offsets),
+        "duration_seconds": offsets[-1] if offsets else 0,
+        "stride_length_cm": stats(stride),
+        "cadence_spm": stats(cadence),
+        "offsets_seconds": offsets,
+        "stride_length_cm_values": stride,
+        "cadence_spm_values": cadence,
+    }
+
+
+def decode_pauses(packed: str, tzinfo: dt.tzinfo = dt.UTC) -> dict[str, Any]:
+    """`pause`: `start_epoch_seconds,duration_seconds,-1,-1,kind` per pause.
+
+    Corroborated: a swim's single 22 s pause against its
+    pauseTimeWithMillis of 20860, and a strength session's two 1 s pauses
+    against 2610 ms. The trailing kind code is returned raw.
+    """
+    pauses = []
+    for chunk in packed.strip().rstrip(";").split(";"):
+        parts = chunk.split(",")
+        if len(parts) < 2:
+            continue
+        try:
+            start, seconds = int(float(parts[0])), int(float(parts[1]))
+        except ValueError:
+            continue
+        record: dict[str, Any] = {"duration_seconds": seconds}
+        if start > 0:
+            record["start_local"] = dt.datetime.fromtimestamp(start, tzinfo).isoformat(
+                timespec="seconds")
+        if len(parts) >= 5:
+            record["kind_raw"] = parts[4]
+        pauses.append(record)
+    return {"pause_count": len(pauses),
+            "total_seconds": sum(p["duration_seconds"] for p in pauses),
+            "pauses": pauses}
+
+
 def decode_laps(packed: str) -> dict[str, Any]:
     """Split the lap field into individual laps and set summaries.
 
@@ -426,8 +718,14 @@ def decode_laps(packed: str) -> dict[str, Any]:
     return result
 
 
-def decode_detail(data: dict[str, Any], include: set[str]) -> dict[str, Any]:
-    """Split a workout detail payload into laps / gps / other streams."""
+# Detail fields that carry location in a non-coordinate form. Never passed
+# through as a raw stream: `kilo_pace`/`mile_pace` embed a geohash per split.
+LOCATION_BEARING_FIELDS = frozenset({"kilo_pace", "mile_pace"})
+
+
+def decode_detail(data: dict[str, Any], include: set[str],
+                  tzinfo: dt.tzinfo = dt.UTC) -> dict[str, Any]:
+    """Split a workout detail payload into laps / splits / gps / streams."""
     gps_fields = {"longitude_latitude", "altitude", "accuracy", "DEMAltitude"}
     out: dict[str, Any] = {}
 
@@ -437,7 +735,21 @@ def decode_detail(data: dict[str, Any], include: set[str]) -> dict[str, Any]:
     }
 
     if "laps" in include and "lap" in populated:
-        out["laps"] = decode_laps(populated["lap"])
+        # Strength sessions put sets in the lap field; strengthAssess is
+        # present on exactly those payloads.
+        if "strengthAssess" in populated:
+            out["sets"] = decode_strength_laps(populated["lap"])
+        else:
+            out["laps"] = decode_laps(populated["lap"])
+
+    if "splits" in include:
+        for field, unit in (("kilo_pace", "km"), ("mile_pace", "mile")):
+            if field in populated:
+                splits = decode_splits(populated[field], unit)
+                out.setdefault("splits", {})[unit] = splits
+
+    if "pause" in populated and ("laps" in include or "summary" in include):
+        out["pauses"] = decode_pauses(populated["pause"], tzinfo)
 
     if "gps" in include:
         tracks = {k: v for k, v in populated.items() if k in gps_fields}
@@ -447,11 +759,18 @@ def decode_detail(data: dict[str, Any], include: set[str]) -> dict[str, Any]:
         )
 
     if "streams" in include:
-        skip = gps_fields | {"lap", "source", "provider"}
+        skip = (gps_fields | LOCATION_BEARING_FIELDS
+                | {"lap", "source", "provider", "pause", "gait", "strengthAssess"})
         out["streams"] = {
             key: decode_stream(key, value)
             for key, value in populated.items() if key not in skip
         }
+        if "gait" in populated:
+            out["streams"]["gait"] = decode_gait(populated["gait"])
+        if "strengthAssess" in populated:
+            out["streams"]["strengthAssess"] = {
+                "encoding": "json", "note": "per-exercise assessment JSON; "
+                "not decoded, returned raw", "raw": populated["strengthAssess"]}
 
     out["available_fields"] = sorted(populated)
     return out

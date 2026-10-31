@@ -26,6 +26,7 @@ absolute mass ("don't know why name is rate?!").
 from __future__ import annotations
 
 import datetime as dt
+import json
 from typing import Any
 
 # summary key -> output key, for fields whose presence (not just decoding)
@@ -134,3 +135,81 @@ def normalise(item: dict[str, Any]) -> dict[str, Any]:
         out["age_years"] = int(age)
 
     return out
+
+
+# Profile fields that are returned. Everything else in getUserInfo -- nick
+# name, avatar URL, signature, location, alarm clocks, login timestamps -- is
+# identifying or irrelevant to interpreting health data, and is dropped
+# rather than filtered later.
+def profile(data: dict[str, Any], today: dt.date | None = None) -> dict[str, Any]:
+    """`huami.health.getUserInfo.json` data -> the inputs Zepp's own
+    calculations use (BMR, calories, zone limits)."""
+    out: dict[str, Any] = {}
+    height = _number(data.get("height"))
+    if height:
+        out["height_cm"] = int(height) if height.is_integer() else height
+    weight = _number(data.get("weight_float")) or _number(data.get("weight"))
+    if weight:
+        out["weight_kg"] = weight
+    birthday = data.get("birthday")
+    if isinstance(birthday, str) and len(birthday) >= 7:
+        try:
+            year, month = int(birthday[:4]), int(birthday[5:7])
+        except ValueError:
+            year = month = 0
+        if year and 1 <= month <= 12:
+            today = today or dt.date.today()
+            # Birth month only: age is exact except within the birth month.
+            out["age_years"] = today.year - year - (1 if today.month < month else 0)
+    gender = _number(data.get("gender"))
+    if gender is not None:
+        # The code's meaning (0/1 -> which gender) is not verified against
+        # the app, so the code is passed through rather than named.
+        out["gender_code_unverified"] = int(gender)
+    config = data.get("config")
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except ValueError:
+            config = None
+    if isinstance(config, dict) and isinstance(config.get("wearHand"), str):
+        out["wear_hand"] = config["wearHand"].lower()
+    out["note"] = "Identifying profile fields are not returned, by design."
+    return out
+
+
+# Device fields that may be returned. An ALLOWLIST, not a blocklist: device
+# records carry the Bluetooth pairing secret (`additionalInfo.auth_key`),
+# MAC address and serial number, and a blocklist would leak whatever field
+# Zepp adds next. Only the names of omitted fields are reported, never
+# their values.
+_DEVICE_FIELDS = frozenset({
+    "deviceSource", "deviceType", "productId", "productVersion", "model",
+    "brand", "firmwareVersion", "hardwareVersion", "softwareVersion",
+    "activeStatus", "bindingStatus", "applicationTime", "lastSyncTime",
+    "lastBindingTime", "bindingTime",
+})
+
+
+def device_summary(payload: Any) -> dict[str, Any]:
+    items = payload.get("items") if isinstance(payload, dict) else payload
+    if isinstance(payload, dict) and not isinstance(items, list):
+        items = payload.get("data")
+    if not isinstance(items, list):
+        return {"devices": [], "note": "Unrecognised device payload shape."}
+    devices, omitted = [], set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        kept = {k: v for k, v in item.items()
+                if k in _DEVICE_FIELDS and isinstance(v, (str, int, float, bool))}
+        omitted |= {k for k in item if k not in _DEVICE_FIELDS}
+        devices.append(kept)
+    return {
+        "devices": devices,
+        "omitted_field_names": sorted(omitted),
+        "note": "Allowlisted fields only. Pairing keys, MAC addresses, "
+                "serial numbers and device ids are never returned. "
+                "deviceSource is the id that workout and event records "
+                "reference, for data-source attribution.",
+    }
