@@ -27,8 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   DEM-corrected elevation and `sport_name_confidence`.
 - `zepp_workout_detail` returns strength `sets` (reps, load, rest per set),
   km `splits`, `pauses` and a decoded `gait` stream (cadence, stride).
-- Six corroborated sport codes (6, 7, 10, 23, 60, 92), each marked as
-  corroborated rather than confirmed.
+- A sport registry (`zepp_mcp/sports.py`) naming 141 workout codes. 9 are
+  confirmed on this project's data, 7 corroborated by independent clients,
+  11 reported once, and 112 catalogued from the Zepp OS sport list via the
+  cloud-code == watch-id rule (verified on 18, 21 and 52). Contested codes
+  (13, 17) stay `unknown_sport_<code>` with candidate names. Every workout
+  now carries `sport_name_confidence`, `sport_family` and, for codes short
+  of confirmed, `other_metrics`. Sport filters accept families
+  (`sport="cycling"`), and `zepp_workout_stats` groups by
+  `sport_family`. `ZEPP_SPORT_CODES` names codes locally.
 - `zepp_training_thresholds` calls `WatchSportStatistics` with the
   parameters other clients use and returns the result undecoded.
 - Metric catalogue (`zepp_mcp/metrics.py`) with verification levels 1–5,

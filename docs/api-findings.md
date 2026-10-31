@@ -511,3 +511,26 @@ Shapes worth recording:
   (`/v1/client/app_tokens?login_token=`), but only on Chinese hosts under
   the Zepp Life app name. It is not used: unverified for global accounts,
   and a wrong guess costs a login attempt.
+
+## Sport codes: the cloud-code == watch-id rule — 2026-10-31
+
+The workout `type` is the only sport identifier the API returns, and the
+account behind this project has produced nine codes. Two external
+catalogues list the watch's own sport ids: ZeppBridge's workout catalogue
+and Gadgetbridge's `ZeppOsActivityType` / `HuamiSportsActivityType`. They
+agree on every id they share. The question was whether those ids say
+anything about cloud codes.
+
+**From 18 upward, they do.** Every confirmed code in that range equals the
+watch id: 18 = soccer (Huami `0x12`), 21 = jump rope (Zepp OS `0x15`), 52 =
+strength (`0x34`). External cloud captures agree on three more: 23 = `0x17`
+rowing machine, 60 = `0x3C` yoga, 92 = `0x5C` badminton. **Below 18 they do
+not:** cloud 8 is a walk and device `0x08` is indoor cycling; cloud 9 is a
+ride and `0x09` an elliptical; cloud 14 is a pool swim and `0x0E` is not a
+sport at all.
+
+So the table in `zepp_mcp/sports.py` applies the watch catalogue only from
+18 upward, marks those 112 names `catalogued` rather than confirmed, and
+leaves low codes to actual cloud observations. Two low codes are contested
+and stay unnamed: 13 (walking vs rowing) and 17 (the watch id says tennis,
+another client says jump rope).

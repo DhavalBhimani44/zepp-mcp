@@ -11,12 +11,18 @@ body:
         number — so the code map can only be built by people checking their
         own watch against the app.
 
+        Most codes already have a name, but only nine are confirmed on real
+        data. If a workout reports `sport_name_confidence` of `catalogued`,
+        `reported`, `corroborated` or `contested` (or `unknown_sport_<code>`),
+        checking it against the app confirms that code for everyone.
+
   - type: dropdown
     id: kind
     attributes:
       label: What are you reporting?
       options:
         - An unknown sport code
+        - Confirming (or correcting) a named sport code that is not yet confirmed
         - A unit marked unit_verified false
         - The te / anaerobic_te scaling question
     validations:
@@ -26,7 +32,7 @@ body:
     id: code
     attributes:
       label: Sport code
-      description: The number reported as unknown_sport_<code>.
+      description: The workout's sport_code (or the number in unknown_sport_<code>), and the name and sport_name_confidence the server gave it, if any.
       placeholder: "22"
 
   - type: input

@@ -5,8 +5,8 @@ sure we are, and what is still open. `zepp_mcp/metrics.py` is the
 machine-readable twin that `zepp_describe_schema` serves at call time. When
 one changes, change the other.
 
-**Last updated:** 2026-10-31 · **Tools:** 14 · **Tests:** 220 offline (+17
-opt-in live)
+**Last updated:** 2026-10-31 · **Tools:** 14 · **Sport codes named:** 141 · **Tests:** 243 offline
+(+17 opt-in live)
 
 ## Verification levels
 
@@ -140,31 +140,121 @@ are summed only where they are additive.
 
 ## Sport codes
 
-| Code | Name | Confidence | Evidence | Sport block |
-|---|---|---|---|---|
-| 1 | outdoor_running | confirmed | App, GPS, 2.83 m/s | foot |
-| 8 | walking | confirmed | App; GPS split track; 94 spm | foot |
-| 9 | outdoor_cycling | confirmed | `ride_`-prefixed pb keys | ride |
-| 14 | pool_swimming | confirmed | swolf, pool length | swim |
-| 16 | free_training | confirmed (by elimination) | See api-findings | free_training |
-| 18 | football | confirmed | App | field_sport |
-| 21 | rope_skipping | confirmed | `rope_skipping_` pb keys | rope_skipping |
-| 22 | hiking | confirmed | App; climb pb keys | hike |
-| 52 | strength_training | confirmed | Sets and `strengthAssess` | strength |
-| 6 | walking | corroborated | ≥2 external cloud clients | foot |
-| 7 | trail_running | corroborated | ≥2 external cloud clients | foot |
-| 10 | indoor_cycling | corroborated | ≥2 external cloud clients | ride |
-| 23 | rowing_machine | corroborated | External cloud client + Huami device enum 0x17 | — |
-| 60 | yoga | corroborated | Codes ≥40 equal the device hex (0x3C) | — |
-| 92 | badminton | corroborated | External cloud client + device enum 0x5C | — |
+The cloud history row names its sport with a bare integer. `zepp_mcp/sports.py`
+names **141 codes**, each with the confidence its evidence supports.
+Every workout reports `sport_name_confidence` and `sport_family`, and
+`zepp_list_workouts` / `zepp_workout_stats` return `sports_seen` so a reader
+can tell a verified name from a catalogued one.
 
-**Conflict on record.** External tables call cloud code 8 "treadmill". On
-this account, code 8 is an outdoor walk with a GPS split track, confirmed
-in the app, so the confirmed name stands. Cloud `type` and the watch's
-Bluetooth sport enum are separate namespaces for low codes (they coincide
-from about 18 upward: 18 soccer, 21 jump rope and 52 strength all match the
-device enum). Corroborated codes carry `sport_name_confidence:
-"corroborated"`. Anything else is `unknown_sport_<code>`.
+| Confidence | Codes | Meaning |
+|---|---|---|
+| confirmed | 9 | Verified on this project's data (Zepp app or a sport-prefixed field) |
+| corroborated | 7 | Two or more independent cloud-reading clients agree |
+| reported | 11 | One external cloud-side observation |
+| catalogued | 112 | Named from the Zepp OS sport list via the rule below; not yet seen in cloud data |
+| contested | 2 | Sources disagree; reported as `unknown_sport_<code>` with candidates |
+| user | — | Supplied via `ZEPP_SPORT_CODES` |
+
+**The catalogue rule.** From 18 upward, the cloud `type` equals the watch's
+own sport id: 18 = soccer (Huami 0x12), 21 = jump rope (0x15) and 52 =
+strength (0x34) hold on this account, three of three, and external cloud
+captures agree on 23 (0x17 rowing machine), 60 (0x3C yoga) and 92 (0x5C
+badminton). Below 18 the rule fails: cloud 8 is a walk while device 0x08 is
+indoor cycling, and cloud 9 is a ride while 0x09 is an elliptical. So it is
+never applied there. Codes 2–5 appear only because some clients carry the
+watch-protocol ids for older devices.
+
+**Families** pick the metric block a row is read with (running/walking →
+foot, cycling → ride, swimming → swim, hiking → hike, strength → strength,
+team and racket sports → field_sport) and decide where a pace is meaningful.
+For any code short of confirmed, fields from other blocks are still
+returned, under `other_metrics`, so a wrong family guess hides nothing.
+
+**Confirming a code.** Check the workout in the Zepp app, then name it
+locally:
+
+```bash
+export ZEPP_SPORT_CODES='{"17": "tennis"}'      # or a path to a JSON file
+```
+
+The name then reports confidence `user`. An issue with the code and the
+app's name moves it to confirmed for everyone.
+
+### Confirmed
+
+| Code | Name | Family | Sources | Note |
+|---|---|---|---|---|
+| 1 | outdoor_running | running | this project, zeppbridge, amazfit-swift, zepp-life-mcp, mi-fit-zepp-exporter | Confirmed in the Zepp app; GPS track at 2.83 m/s. |
+| 8 | walking | walking | this project | Confirmed in the Zepp app; an outdoor walk with a GPS split track and 94 steps/min. External tables call cloud 8 'treadmill' (zeppbridge, amazfit-swift, zepp-life-mcp, mi-fit-zepp-exporter); on this account it is not, so other accounts may differ. |
+| 9 | outdoor_cycling | cycling | this project, zeppbridge, amazfit-swift, zepp-life-mcp, mi-fit-zepp-exporter, dofek | The row's pb keys are ride_-prefixed; every external client agrees. |
+| 14 | pool_swimming | swimming | this project, zeppbridge, amazfit-swift, zepp-life-mcp | Carries swolf, pool length and stroke counts. |
+| 16 | free_training | free_training | this project, zeppbridge, amazfit-swift, zepp-life-mcp | Named by elimination on this account; three external clients agree. |
+| 18 | football | team_sport | this project, gadgetbridge:HuamiSportsActivityType | Confirmed in the Zepp app; Huami's sport id 0x12 is soccer. |
+| 21 | rope_skipping | rope_skipping | this project, amazfit-swift, gadgetbridge:ZeppOsActivityType | The row's pb keys are rope_skipping_-prefixed; Zepp OS id 0x15. |
+| 22 | hiking | hiking | this project, zeppbridge | Confirmed in the Zepp app; climb_-prefixed pb keys. |
+| 52 | strength_training | strength | this project, zeppbridge, gadgetbridge:ZeppOsActivityType, gadgetbridge:HuamiSportsActivityType | Per-set reps; Zepp OS id 0x34. |
+
+### Corroborated
+
+| Code | Name | Family | Sources | Note |
+|---|---|---|---|---|
+| 6 | walking | walking | zeppbridge, amazfit-swift, zepp-life-mcp, mi-fit-zepp-exporter, dofek |  |
+| 7 | trail_running | running | zeppbridge, amazfit-swift |  |
+| 10 | indoor_cycling | cycling | zeppbridge, amazfit-swift, zepp-life-mcp, mi-fit-zepp-exporter, dofek |  |
+| 12 | elliptical | cardio_machine | zeppbridge, amazfit-swift, zepp-life-mcp |  |
+| 23 | rowing_machine | cardio_machine | zeppbridge, mi-fit-zepp-exporter, dofek, gadgetbridge:HuamiSportsActivityType |  |
+| 60 | yoga | mind_body | amazfit-swift, zeppbridge, gadgetbridge:ZeppOsActivityType, gadgetbridge:HuamiSportsActivityType |  |
+| 92 | badminton | racket_sport | zeppbridge, mi-fit-zepp-exporter, dofek, gadgetbridge:ZeppOsActivityType, gadgetbridge:HuamiSportsActivityType |  |
+
+### Reported
+
+| Code | Name | Family | Sources | Note |
+|---|---|---|---|---|
+| 11 | treadmill | running | zepp-life-mcp |  |
+| 15 | open_water_swimming | swimming | amazfit-swift | zeppbridge reports this code only from one watch model. |
+| 46 | cross_country_skiing | winter_sport | zeppbridge |  |
+| 47 | mountain_biking | cycling | zeppbridge |  |
+| 141 | rowing | water_sport | zeppbridge |  |
+| 192 | outdoor_running | running | zeppbridge |  |
+| 193 | fishing | other | zeppbridge |  |
+| 211 | road_cycling | cycling | zeppbridge |  |
+| 223 | auto_detected_activity | other | zeppbridge | An activity the watch detected on its own rather than one started. |
+| 224 | hiking | hiking | zeppbridge |  |
+| 225 | rucking | walking | zeppbridge |  |
+
+### Contested
+
+| Code | Name | Family | Sources | Note |
+|---|---|---|---|---|
+| 13 | unknown_sport_13 (candidates: walking, rowing) | other | zeppbridge, zepp-life-mcp | zeppbridge infers walking; zepp-life-mcp says rowing. |
+| 17 | unknown_sport_17 (candidates: tennis, jump_rope) | other | zeppbridge, zepp-life-mcp | Zepp OS id 0x11 is tennis, but codes below 18 do not follow the device-id rule; zepp-life-mcp says jump rope. |
+
+### Catalogued (sources: ZeppBridge catalogue + Gadgetbridge ZeppOsActivityType)
+
+- **cardio_machine**: 54 stair_climber, 57 stepper, 144 air_walker
+- **cycling**: 4 outdoor_cycling, 48 bmx, 143 spinning, 206 e_bike
+- **dance**: 51 aerobic_combo, 71 ballet, 72 belly_dance, 73 square_dance, 74 street_dance, 75 ballroom_dance, 76 dance, 77 zumba, 109 aerobics, 111 mass_gymnastics, 112 latin_dance, 113 jazz_dance, 114 cardio_combat, 146 folk_dance, 165 hip_hop, 166 pole_dance, 168 breaking, 185 modern_dance
+- **free_training**: 5 free_training
+- **hiking**: 70 rock_climbing, 184 bouldering
+- **martial_arts**: 95 kendo, 96 karate, 97 boxing, 98 judo, 99 wrestling, 101 muay_thai, 102 taekwondo, 103 martial_arts, 104 kickboxing, 147 jujitsu, 148 fencing
+- **mind_body**: 53 stretching, 55 flexibility, 61 pilates, 100 tai_chi
+- **other**: 64 fishing, 80 bowling, 93 archery, 94 horse_riding, 115 hula_hoop, 117 darts, 118 kite_flying, 129 parkour, 132 driving, 151 billiards, 159 swinging, 160 shuffleboard, 161 table_football, 162 shuttlecock, 163 somatosensory_game, 169 hacky_sack, 170 bocce, 171 jai_alai, 173 chess, 174 checkers, 175 weiqi, 176 bridge, 177 board_game, 189 esports
+- **racket_sport**: 81 squash, 89 table_tennis
+- **running**: 2 treadmill
+- **strength**: 24 indoor_fitness, 49 hiit, 50 core_training, 59 gymnastics, 130 cross_training, 145 wall_ball, 149 horizontal_bar, 150 parallel_bars, 167 battle_rope
+- **team_sport**: 78 cricket, 79 baseball, 85 basketball, 86 softball, 87 gateball, 88 volleyball, 91 handball, 116 frisbee, 119 tug_of_war, 122 beach_volleyball, 152 sepak_takraw, 153 dodgeball, 158 ice_hockey, 164 futsal, 188 floorball, 191 soccer
+- **walking**: 3 walking, 40 indoor_walking, 131 race_walking
+- **water_sport**: 65 sailing, 66 water_rowing, 138 dragon_boat, 140 kayaking, 154 water_polo, 155 finswimming, 156 artistic_swimming, 157 snorkeling, 172 flowriding
+- **wheel_sport**: 67 skateboarding, 69 roller_skating
+- **winter_sport**: 41 curling, 44 ice_skating, 45 indoor_ice_skating
+
+Codes 2–5 are watch-protocol ids (treadmill, walking, outdoor cycling, free
+training), kept for older devices that may write them.
+
+**Conflict on record.** External cloud tables call code 8 "treadmill"; on
+this account it is an outdoor walk with a GPS split track, confirmed in the
+app. Other accounts may differ. `ZEPP_SPORT_CODES` lets a user correct it
+locally.
 
 ---
 
@@ -196,14 +286,16 @@ Facts only were taken from every source below; no code was copied.
 
 | Source | Licence | Used for |
 |---|---|---|
-| ZeppBridge (lingcang728) | MIT | Endpoint params, event types, pagination, cloud sport catalogue |
+| ZeppBridge (lingcang728) | MIT | Endpoint params, event types, pagination, cloud sport catalogue (codes and names; no code copied) |
 | m4ary/zepp-health-cli | MIT | WatchSportStatistics params, bloodPressure, manualData |
 | AlexxIT/SmartScaleConnect | MIT | Scale schema |
 | argrento/huami-token | MIT | Login flow |
 | bentasker/zepp_to_influxdb | BSD-3 | band_data blob layout, heartRate params |
 | rolandsz exporter, H3llK33p3r/zepp-fit-extractor | MIT / Apache-2.0 | `trackid=<next>` paging |
+| kubulashvili/zepp-life-mcp | MIT | Cloud sport codes |
+| alan13367/amazfit-swift, Asherlc/dofek | none / all rights reserved | Cloud sport codes, facts only |
 | micw/hacking-mifit-api, imastarboy97/zepp-mcp | none (all rights reserved) | Facts only |
-| Gadgetbridge | AGPL | Device-side sport enum facts only |
+| Gadgetbridge | AGPL | Watch sport ids (ZeppOsActivityType, HuamiSportsActivityType), facts only |
 
 ## What would move rows up a level
 
@@ -217,3 +309,6 @@ Facts only were taken from every source below; no code was copied.
    without publishing a route.
 4. **A multisport activity, open-water swim or treadmill run**, to confirm
    `child_list` assembly and the conflicting sport codes.
+5. **Any workout whose `sport_name_confidence` is not `confirmed`.** The
+   code plus the name the Zepp app shows for it confirms that code for
+   everyone. Contested codes 13 and 17 are the most valuable.

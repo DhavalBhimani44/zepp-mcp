@@ -66,10 +66,15 @@ real captured responses.
 
 ## Features
 
-- **All sports in one call.** Swimming, running, cycling, football, walking,
-  hiking, strength work, rope skipping and free training, each with its own metrics — SWOLF and
-  stroke counts for swims, pace and cadence for runs, set counts for the gym, jump counts for
-  skipping.
+- **Every sport, named honestly.** 141 Zepp sport codes are named — running,
+  cycling, swimming, team and racket sports, gym work, martial arts, dance,
+  water and winter sports and more. Each carries a `sport_name_confidence`
+  (confirmed on real data, corroborated by other clients, or catalogued
+  from the watch's sport list) and a `sport_family`, so "all my cycling"
+  covers outdoor, indoor, road and mountain rides. Each family has its own
+  metrics: SWOLF and stroke counts for swims, pace and cadence for runs,
+  sets and reps for the gym, jump counts for skipping. You can name any
+  code yourself with `ZEPP_SPORT_CODES`.
 - **Sleep with all four stages.** Light, deep, REM and awake, not just the
   two most implementations report.
 - **Sleep in depth.** Latency, time in bed and efficiency, plus each
@@ -344,6 +349,7 @@ is in [docs/capability-matrix.md](docs/capability-matrix.md).
 | --- | --- | --- |
 | `ZEPP_EMAIL`, `ZEPP_PASSWORD` | — | Credentials, from `.env` or the environment |
 | `ZEPP_TIMEZONE` | system zone | IANA zone for data that carries none (stress, PAI) |
+| `ZEPP_SPORT_CODES` | — | JSON (or a path to a JSON file) naming sport codes you have checked in the Zepp app, e.g. `{"17": "tennis"}` |
 | `ZEPP_TOKEN_CACHE` | `~/.zepp-mcp/token.json` | Path, or `off` |
 | `ZEPP_RESPONSE_CACHE` | on | In-memory response cache; `off` disables it. Never written to disk |
 | `ZEPP_MIN_REQUEST_INTERVAL` | `0.35` | Seconds between outbound requests |
@@ -478,7 +484,7 @@ time too.
 | RTPC | Present on every sport, reads a constant 21 outside running, meaning unconfirmed. |
 | Per-second HR, Body Charge stress blob, ECG, blood pressure, women's health | Index or route discovered but not decodable or not populated on any account available here. See the [capability matrix](docs/capability-matrix.md). |
 | Multisport, GPS decoding | Built but untested: no triathlon recorded, and GPS workouts are deliberately excluded from the corpus. |
-| Sport codes | 9 confirmed, 6 more corroborated by independent clients (flagged `sport_name_confidence: "corroborated"`). External tables call code 8 "treadmill"; it is confirmed as an outdoor walk here. Code 16 is named by elimination. |
+| Sport codes | 141 codes named: 9 confirmed on real data, 7 corroborated, 11 reported once, 112 catalogued from the watch's sport list, and 2 contested (13, 17), which stay `unknown_sport_<code>` with candidates. Catalogued names rest on a rule that holds 3/3 here, not on captures. External tables call code 8 "treadmill"; it is an outdoor walk on this account. See [Sport codes](docs/capability-matrix.md#sport-codes). |
 | Zepp Coach | No dedicated endpoint across 22 probed routes ([details](docs/api-findings.md#training-plans--confirmed-2026-09-03)). Plan progress arrives through the workout row as `training_plan`. |
 | `zepp_body_composition` fields | Fat/water/muscle/bone/BMR use a schema from a community capture (AlexxIT/SmartScaleConnect), not this project's own data. |
 
@@ -501,7 +507,8 @@ zepp_mcp/           the server
   workouts.py       index row -> normalised, sport-aware summary
   analysis.py       aggregates, records, trends (all derived, all labelled)
   metrics.py        metric catalogue: units, sources, verification levels
-  codes.py          sport codes, sleep stages, sentinels
+  sports.py         every sport code, with confidence, family and sources
+  codes.py          confirmed sport codes, sleep stages, sentinels
   body.py           scale readings, profile, device allowlist
   server.py         MCP tool definitions
 examples/           runnable analyses with real output
