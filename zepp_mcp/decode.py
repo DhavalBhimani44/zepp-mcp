@@ -23,7 +23,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from .codes import HR_BYTE_SENTINELS, SLEEP_STAGE_MODES, clean
+from .codes import HR_BYTE_SENTINELS, SLEEP_STAGE_MODES, clean, format_pace
 
 # --------------------------------------------------------------------------
 # Daily band data
@@ -547,7 +547,7 @@ def decode_splits(packed: str, unit: str = "km") -> dict[str, Any]:
                     record[name] = int(value) if value.is_integer() else value
         seconds = record.get("split_seconds")
         if seconds:
-            record["pace"] = f"{int(seconds) // 60}:{int(seconds) % 60:02d}/{unit}"
+            record["pace"] = format_pace(seconds, unit)
         splits.append(record)
     fastest = min((s for s in splits if s.get("split_seconds")),
                   key=lambda s: s["split_seconds"], default=None)
@@ -748,7 +748,9 @@ def decode_detail(data: dict[str, Any], include: set[str],
                 splits = decode_splits(populated[field], unit)
                 out.setdefault("splits", {})[unit] = splits
 
-    if "pause" in populated and ("laps" in include or "summary" in include):
+    # Pauses are a few rows at most, and `pause` is excluded from the raw
+    # streams, so they come back whichever sections were asked for.
+    if "pause" in populated:
         out["pauses"] = decode_pauses(populated["pause"], tzinfo)
 
     if "gps" in include:

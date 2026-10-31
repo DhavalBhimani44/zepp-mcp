@@ -332,3 +332,16 @@ def test_profile_drops_identifying_fields():
     text = json.dumps(profile)
     for leaked in ("Alex", "avatar", "nick", "alarm"):
         assert leaked not in text
+
+
+def test_pauses_come_back_even_when_only_streams_are_requested():
+    detail = load("041_workout_detail_type14_1786761306.json")["data"]
+    decoded = decode.decode_detail(detail, {"streams"})
+    assert decoded["pauses"]["pause_count"] == 1
+    assert "pause" not in decoded["streams"]
+
+
+def test_format_pace():
+    from zepp_mcp.codes import format_pace
+    assert format_pace(354.1) == "5:54/km"
+    assert format_pace(105.9, "100m") == "1:45/100m"

@@ -40,9 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parameters other clients use and returns the result undecoded.
 - Metric catalogue (`zepp_mcp/metrics.py`) with verification levels 1–5,
   served by `zepp_describe_schema`.
-- Client: in-memory response cache (today's ranges expire after 5 min),
-  request pacing, error classification (`error_kind`), paginated events,
-  and partial-result reporting.
+- Client: in-memory response cache (5 min for the last week and for empty
+  answers, 1 h for older ranges, never on disk), request pacing,
+  error classification (`error_kind`), paginated events, and
+  partial-result reporting.
 - `tools/probe_candidates.py`, a controlled probe of open endpoint
   hypotheses, and opt-in live tests (`ZEPP_LIVE=1`).
 - `ZEPP_TIMEZONE`, `ZEPP_RESPONSE_CACHE` and `ZEPP_MIN_REQUEST_INTERVAL`
@@ -68,6 +69,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy timezone names (`Asia/Calcutta`) fell back to UTC on systems
   without the alias, shifting times by the UTC offset.
 - Error notes no longer echo the user id in request paths.
+- On Windows, which ships no timezone database, every IANA zone silently
+  fell back to UTC and moved workouts and daily scores onto the wrong day.
+  `tzdata` is now a Windows-only dependency.
+- Without `ZEPP_TIMEZONE`, the server now uses the machine's named zone
+  ($TZ or /etc/localtime) instead of a fixed UTC offset, which was wrong
+  across DST changes.
 
 - Login no longer registers the app token under `com.huami.midong`, the real
   Zepp Android app's package id. Huami's backend appears to key an active

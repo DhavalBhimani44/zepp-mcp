@@ -301,3 +301,50 @@ def test_describe_schema_lists_every_sport_code():
     codes = server.zepp_describe_schema()["sport_codes"]
     assert len(codes["codes"]) >= 140
     assert codes["count_by_confidence"]["confirmed"] == 9
+
+
+def test_timezone_names_never_degrade_to_a_bare_offset_when_avoidable(monkeypatch):
+    import datetime as dt
+    monkeypatch.delenv("ZEPP_TIMEZONE", raising=False)
+    monkeypatch.setenv("TZ", "Europe/Berlin")
+    assert server._tz_name(server._user_tz()) == "Europe/Berlin"
+    plus5 = dt.timezone(dt.timedelta(hours=5))
+    assert server._tz_name(plus5) == "Etc/GMT-5"
+    assert server._tz_name(dt.timezone(dt.timedelta(hours=-3))) == "Etc/GMT+3"
+    assert server._tz_name(dt.UTC) == "UTC"
+    assert server._tz_name(dt.timezone(dt.timedelta(hours=5, minutes=30))) == "+0530"
+
+
+def test_zepp_timezone_wins_over_the_system(monkeypatch):
+    monkeypatch.setenv("TZ", "Europe/Berlin")
+    monkeypatch.setenv("ZEPP_TIMEZONE", "Asia/Calcutta")
+    assert server._tz_name(server._user_tz()) == "Asia/Kolkata"
+
+
+@pytest.mark.parametrize("metric", ["stress", "body_charge"])
+def test_nested_day_samples_are_capped_too(monkeypatch, metric):
+    monkeypatch.setattr(server, "_SAMPLE_CAP", 50)
+    out = server.zepp_health_metrics(metric, include_samples=True, **RANGE)
+    kept = sum(len(d.get("samples", [])) for d in out["days"])
+    assert kept <= 50
+    assert out["samples_truncated"] is True and out["samples_total"] > 50
+    # The newest day keeps its samples; summaries survive on every day.
+    assert out["days"][-1]["samples"]
+    assert all("min" in d or "avg" in d for d in out["days"])
+
+
+def test_average_steps_ignore_days_without_a_count(monkeypatch):
+    from zepp_mcp import decode
+    real = decode.summarise_day
+
+    def missing_first(row):
+        day = real(row)
+        if day["date"] == "2026-08-08":
+            day["steps"] = None
+        return day
+
+    monkeypatch.setattr(decode, "summarise_day", missing_first)
+    out = server.zepp_daily_summary(**RANGE)
+    counted = [d["steps"] for d in out["days"] if d["steps"] is not None]
+    assert out["totals"]["days_with_steps"] == len(counted) == 7
+    assert out["totals"]["avg_daily_steps"] == int(sum(counted) / len(counted))

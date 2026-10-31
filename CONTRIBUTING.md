@@ -187,7 +187,7 @@ def test_distance_stream_matches_the_summary_total(swim_detail, history_rows):
 That test would fail if the encoding assumption were wrong, which a
 hand-written expected value would not.
 
-Tests must not require network or credentials. All 220 offline tests run
+Tests must not require network or credentials. All 264 offline tests run
 against the corpus, and the client and tool layers run against an
 `httpx.MockTransport` that serves it (`tests/test_server.py`). Live checks
 live in `tests/test_live.py`, are skipped unless `ZEPP_LIVE=1`, and never

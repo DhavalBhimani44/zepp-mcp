@@ -17,6 +17,7 @@ from mcp.server import MCPServer
 from . import analysis, body, decode, events, metrics, sports, workouts
 from . import client as api
 from .auth import describe_expiry
+from .codes import format_pace
 
 _ROOT = Path(__file__).resolve().parent.parent
 api.load_dotenv(_ROOT / ".env")
@@ -92,24 +93,67 @@ def _range(from_date: str | None, to_date: str | None,
     return start.isoformat(), end.isoformat()
 
 
+def _system_zone() -> dt.tzinfo | None:
+    """The machine's IANA zone, when it can be named.
+
+    `datetime.now().astimezone()` only yields a fixed UTC offset, which is
+    wrong across a DST change and is not a name the Zepp dateString route
+    has been seen to accept. Linux and macOS expose the real name through
+    $TZ or the /etc/localtime symlink; Windows does neither, which is what
+    ZEPP_TIMEZONE is for.
+    """
+    candidates = [os.environ.get("TZ", "").lstrip(":")]
+    try:
+        target = os.path.realpath("/etc/localtime")
+        if "zoneinfo/" in target:
+            candidates.append(target.split("zoneinfo/", 1)[1])
+    except OSError:
+        pass
+    for name in candidates:
+        if name:
+            resolved = events.zone(name, dt.UTC)
+            if resolved is not dt.UTC or name.upper() in ("UTC", "ETC/UTC"):
+                return resolved
+    return None
+
+
 def _user_tz() -> dt.tzinfo:
     """The account holder's timezone for data that does not carry one.
 
     v1 events (stress, PAI) carry no zone of their own. ZEPP_TIMEZONE (an
-    IANA name) wins; otherwise the machine's local zone, since this server
-    runs on the user's own machine.
+    IANA name) wins; then the machine's named zone, since this server runs
+    on the user's own machine; a fixed offset only as the last resort.
     """
     name = os.environ.get("ZEPP_TIMEZONE")
     if name:
         resolved = events.zone(name, dt.UTC)
         if resolved is not dt.UTC or name.upper() == "UTC":
             return resolved
-    return dt.datetime.now().astimezone().tzinfo or dt.UTC
+    return _system_zone() or dt.datetime.now().astimezone().tzinfo or dt.UTC
 
 
 def _tz_name(tzinfo: dt.tzinfo) -> str:
+    """An IANA name for `tzinfo`, for the routes that take one.
+
+    A whole-hour fixed offset maps to its Etc/GMT zone (note the inverted
+    sign: Etc/GMT-5 is UTC+5). A fractional offset such as +05:30 has no
+    IANA equivalent and is sent as "+0530"; set ZEPP_TIMEZONE to avoid it.
+    """
     key = getattr(tzinfo, "key", None)
-    return key or dt.datetime.now(tzinfo).strftime("%z") or "UTC"
+    if key:
+        return key
+    offset = dt.datetime.now(tzinfo).utcoffset() or dt.timedelta(0)
+    seconds = int(offset.total_seconds())
+    if seconds == 0:
+        return "UTC"
+    if seconds % 3600 == 0:
+        hours = seconds // 3600
+        return f"Etc/GMT{'-' if hours > 0 else '+'}{abs(hours)}"
+    return dt.datetime.now(tzinfo).strftime("%z")
+
+
+def _whole(value: float | None) -> int | None:
+    return None if value is None else int(value)
 
 
 def _in_range(records: list[dict[str, Any]], start: str, end: str,
@@ -172,9 +216,12 @@ def zepp_daily_summary(
             "steps": sum(d.get("steps") or 0 for d in days),
             "distance_km": round(
                 sum(d.get("distance_metres") or 0 for d in days) / 1000, 2),
-            "avg_daily_steps": round(
-                sum(d.get("steps") or 0 for d in days) / len(days)),
-            "method": "derived: sums and means over the days returned",
+            # Over days that HAVE a step count: an unworn day is missing
+            # data, and counting it as 0 would drag the average down.
+            "avg_daily_steps": _whole(analysis.mean_of(days, "steps", 0)),
+            "days_with_steps": len([d for d in days if d.get("steps") is not None]),
+            "method": "derived: sums over the days returned; average over "
+                      "days with a step count",
         }
     return result
 
@@ -525,7 +572,7 @@ def _lactate_threshold_estimates(client: api.ZeppClient, start: str,
                 pace = entry.get("lactate_threshold_pace_sec_per_km")
                 if pace:
                     entry["lactate_threshold_pace"] = (
-                        f"{int(pace) // 60}:{int(pace) % 60:02d}/km")
+                        format_pace(pace))
             events.sort(key=lambda e: e.get("date") or "")
             return events, "lactate_threshold_events"
 
@@ -549,7 +596,7 @@ def _lactate_threshold_estimates(client: api.ZeppClient, start: str,
         pace = entry["lactate_threshold_pace_sec_per_km"]
         if pace:
             entry["lactate_threshold_pace"] = (
-                f"{int(pace) // 60}:{int(pace) % 60:02d}/km")
+                format_pace(pace))
         estimates.append(entry)
     estimates.sort(key=lambda e: e["date"])
     return estimates, "workout_rows"
@@ -715,6 +762,25 @@ def _cap(samples: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _cap_day_samples(days: list[dict[str, Any]]) -> dict[str, Any]:
+    """Apply the same sample cap when samples are nested per day (stress,
+    Body Charge), newest days first so the cap keeps the most recent data.
+    Days past the cap keep their summary and lose only their samples."""
+    budget = _SAMPLE_CAP
+    total = 0
+    for day in sorted(days, key=lambda d: d.get("date") or "", reverse=True):
+        samples = day.get("samples")
+        if not isinstance(samples, list):
+            continue
+        total += len(samples)
+        if len(samples) > budget:
+            day["samples"] = samples[:budget]
+            day["samples_truncated"] = True
+        budget = max(0, budget - len(samples))
+    return ({"samples_truncated": True, "samples_total": total}
+            if total > _SAMPLE_CAP else {})
+
+
 def _health_metric(client: api.ZeppClient, metric: str, start: str, end: str,
                    tz: dt.tzinfo, include_samples: bool) -> dict[str, Any]:
     """Fetch, decode and roll up one metric. Returns days + trend key."""
@@ -815,6 +881,8 @@ def _health_metric(client: api.ZeppClient, metric: str, start: str, end: str,
         raise _BadInput(f"Unknown metric {metric!r}.")
 
     days = _in_range(days, start, end)
+    if include_samples and metric in ("stress", "body_charge"):
+        extra.update(_cap_day_samples(days))
     result = {**_combine(sources), "unit": unit, "days": days, "day_count": len(days),
               **extra}
     if days and result.get("status") != "error":
@@ -1007,7 +1075,7 @@ def zepp_period_summary(
             **_collected_status(collected),
             "days_with_data": len(days),
             "total_steps": sum(steps),
-            "avg_daily_steps": round(sum(steps) / len(days)) if days else None,
+            "avg_daily_steps": _whole(analysis.mean_of(days, "steps", 0)),
             "distance_km": round(
                 sum(d.get("distance_metres") or 0 for d in days) / 1000, 1),
             "days_step_goal_met": len(goal),

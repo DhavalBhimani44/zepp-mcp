@@ -489,7 +489,9 @@ def _overrides() -> dict[int, Sport]:
             name = name.strip().lower().replace(" ", "_")
             if not name:
                 continue
-            if family not in FAMILY_BLOCK:
+            # isinstance first: a list or object here is unhashable, and a
+            # malformed override must be ignored, never crash every lookup.
+            if not isinstance(family, str) or family not in FAMILY_BLOCK:
                 family = _FAMILY_BY_NAME.get(name, "other")
             parsed[code] = Sport(code, name, family, "user", ("ZEPP_SPORT_CODES",))
     _override_cache = (key, parsed)

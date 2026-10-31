@@ -209,7 +209,7 @@ chmod 600 .env
 Verify it works — the test suite needs no network and no credentials:
 
 ```bash
-uv run pytest              # 220 tests against the fixture corpus
+uv run pytest              # 264 tests against the fixture corpus
 uv run tools/smoke_test.py # starts the server, lists its tools
 ```
 
@@ -361,9 +361,10 @@ This is health data. The design reflects that.
 
 - **Nothing is hosted.** `zepp-mcp` is a local stdio process. There is no
   backend I run, no account to create, and no relay your data passes through.
-- **No health data is written to disk.** Responses are cached in memory for
-  the life of the process only (ranges that reach today expire after five
-  minutes), so a conversation does not refetch the same month.
+- **No health data is written to disk.** Responses are cached in memory
+  only, and never for long: anything covering the last week (or coming back
+  empty) expires after five minutes, because a watch that syncs late fills
+  in past days; older ranges expire after an hour.
 - **Only the API token is cached**, at `~/.zepp-mcp/token.json` (mode `0600`).
   Set `ZEPP_TOKEN_CACHE=off` to disable and log in every time.
 - **Credentials live in `.env`**, never in client config files, never in

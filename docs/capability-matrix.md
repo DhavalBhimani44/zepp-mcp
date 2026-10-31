@@ -5,7 +5,7 @@ sure we are, and what is still open. `zepp_mcp/metrics.py` is the
 machine-readable twin that `zepp_describe_schema` serves at call time. When
 one changes, change the other.
 
-**Last updated:** 2026-10-31 · **Tools:** 14 · **Sport codes named:** 141 · **Tests:** 243 offline
+**Last updated:** 2026-10-31 · **Tools:** 14 · **Sport codes named:** 141 · **Tests:** 264 offline
 (+17 opt-in live)
 
 ## Verification levels

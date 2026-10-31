@@ -230,3 +230,40 @@ def test_records_cover_catalogued_distance_sports(rows):
     trail = as_code(rows, 1, 7)
     records = analysis.records([trail])["within_range"]
     assert "fastest_avg_pace_sec_per_km" in records["trail_running"]
+
+
+def test_no_pace_for_non_distance_sports(rows):
+    football = as_code(rows, 8, 18)       # a walk row relabelled football
+    assert football["summary"]["distance_metres"] > 0
+    assert "derived" not in football
+
+
+def test_series_across_families_never_crowns_a_ride_as_best_pace(rows):
+    run = workouts.normalise(next(r for r in rows if r["type"] == 1))
+    ride = as_code(rows, 1, 9)
+    ride["derived"]["pace_sec_per_km"] = 60.0   # far faster than any run
+    out = analysis.series([run, ride], "pace")
+    assert "best" not in out and "trend" not in out
+    assert out["by_family"]["running"]["best"]["sport"] == "outdoor_running"
+    assert out["by_family"]["cycling"]["best"]["value"] == 60.0
+
+
+def test_single_family_series_keeps_top_level_summary(rows):
+    run = workouts.normalise(next(r for r in rows if r["type"] == 1))
+    out = analysis.series([run, as_code(rows, 1, 7)], "pace")
+    assert "best" in out and "by_family" not in out
+
+
+def test_codes_sport_codes_matches_the_registry():
+    confirmed = {r["code"]: r["name"] for r in sports.describe()["codes"]
+                 if r["confidence"] == "confirmed"}
+    assert confirmed == SPORT_CODES
+
+
+@pytest.mark.parametrize("family", [["racket_sport"], {"a": 1}, 7, None])
+def test_override_with_a_malformed_family_is_ignored_not_fatal(monkeypatch, family):
+    monkeypatch.setenv("ZEPP_SPORT_CODES",
+                       json.dumps({"301": {"name": "padel", "family": family}}))
+    assert sports.name(301) == "padel"
+    assert sports.family(301) == "other"
+    assert sports.name(1) == "outdoor_running"

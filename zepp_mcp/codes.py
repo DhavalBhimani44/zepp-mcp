@@ -75,6 +75,10 @@ SLEEP_SUMMARY_FIELDS: dict[str, str] = {
 #
 # Codes outside this map are reported as unknown_sport_<code> rather than
 # guessed. A fabricated sport name in front of the model becomes a fact.
+#
+# The registry of record is sports.py; this dict is the confirmed subset,
+# kept for callers that import it, and a test (test_sports.py) fails if the
+# two ever disagree.
 SPORT_CODES: dict[int, str] = {
     1: "outdoor_running",
     8: "walking",
@@ -96,6 +100,12 @@ SPORT_CODES: dict[int, str] = {
 def sport_confidence(code: object) -> str:
     from . import sports
     return sports.confidence(code)
+
+
+def format_pace(seconds: float, unit: str = "km") -> str:
+    """m:ss per unit, e.g. 354.1 -> "5:54/km". Truncates, as Zepp does."""
+    whole = int(seconds)
+    return f"{whole // 60}:{whole % 60:02d}/{unit}"
 
 
 def sport_name(code: object) -> str:

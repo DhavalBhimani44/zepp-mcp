@@ -18,7 +18,7 @@ from . import decode, events, sports
 from .codes import (
     TRAINING_EFFECT_SCALE,
     clean,
-    sport_confidence,
+    format_pace,
     training_effect_band,
 )
 
@@ -460,13 +460,13 @@ def _derived_pace(distance: float | None, moving: float | None,
         per_100 = sec_per_km / 10
         return {
             "pace_sec_per_100m": round(per_100, 1),
-            "pace": f"{int(per_100) // 60}:{int(per_100) % 60:02d}/100m",
+            "pace": format_pace(per_100, "100m"),
             "speed_kmh": round(distance / moving * 3.6, 2),
             "method": "derived: distance_metres / moving_time_seconds",
         }
     return {
         "pace_sec_per_km": round(sec_per_km, 1),
-        "pace": f"{int(sec_per_km) // 60}:{int(sec_per_km) % 60:02d}/km",
+        "pace": format_pace(sec_per_km),
         "speed_kmh": round(distance / moving * 3.6, 2),
         "method": "derived: distance_metres / moving_time_seconds",
     }
@@ -572,7 +572,7 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
         "source": row.get("source"),
         "sport": sports.name(code),
         "sport_code": code,
-        "sport_name_confidence": sport_confidence(code),
+        "sport_name_confidence": sports.confidence(code),
         "sport_family": sports.family(code),
         "start_local": _iso(row.get("trackid"), zone),
         "end_local": _iso(row.get("end_time"), zone),
@@ -588,10 +588,14 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
     if distance is not None:
         out["summary"]["distance_metres"] = distance
     block = sports.metric_block(code)
-    derived = _derived_pace(distance, timing.get("moving_time_seconds"),
-                            swim=block == "swim")
-    if derived:
-        out["derived"] = derived
+    # Pace only where distance over time is the point of the sport. A per-km
+    # "pace" for football or a stop-start session is a number, not a pace,
+    # and would land in pace trends and records next to real runs.
+    if sports.family(code) in sports.DISTANCE_FAMILIES:
+        derived = _derived_pace(distance, timing.get("moving_time_seconds"),
+                                swim=block == "swim")
+        if derived:
+            out["derived"] = derived
 
     sport = sports.lookup(code)
     if sport is not None and sport.confidence == "contested":

@@ -20,6 +20,7 @@ import statistics
 from collections.abc import Callable
 from typing import Any
 
+from .codes import format_pace
 from .sports import DISTANCE_FAMILIES
 
 
@@ -130,11 +131,11 @@ def totals(workouts: list[dict[str, Any]]) -> dict[str, Any]:
         t = sum(_num(_get(w, "summary.moving_time_seconds")) or 0 for w in paced)
         if next(iter(families)) == "swimming":
             per = t / d * 100
-            out["avg_pace"] = f"{int(per) // 60}:{int(per) % 60:02d}/100m"
+            out["avg_pace"] = format_pace(per, "100m")
             out["avg_pace_sec_per_100m"] = round(per, 1)
         else:
             per = t / d * 1000
-            out["avg_pace"] = f"{int(per) // 60}:{int(per) % 60:02d}/km"
+            out["avg_pace"] = format_pace(per)
             out["avg_pace_sec_per_km"] = round(per, 1)
         out["avg_pace_method"] = "derived: total distance / total moving time"
     return out
@@ -218,7 +219,25 @@ def linear_trend(points: list[tuple[dt.date, float]]) -> dict[str, Any] | None:
     }
 
 
+def _summarise_series(rows: list[dict[str, Any]], lower_better: bool) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    trend = linear_trend([(dt.date.fromisoformat(r["date"]), r["value"]) for r in rows])
+    if trend:
+        out["trend"] = trend
+    if rows:
+        out["best"] = (min if lower_better else max)(rows, key=lambda r: r["value"])
+        out["mean"] = round(statistics.fmean(r["value"] for r in rows), 2)
+    return out
+
+
 def series(workouts: list[dict[str, Any]], metric: str) -> dict[str, Any]:
+    """Per-workout values of one metric, with best, mean and trend.
+
+    When the workouts span more than one sport family, best/mean/trend are
+    given PER FAMILY only: a ride's pace is not a running record, and a
+    run's cadence (steps/min) and a ride's (rpm) are different quantities
+    under one field name.
+    """
     path, unit, lower_better = TREND_METRICS[metric]
     rows = []
     for workout in sorted(workouts, key=lambda w: w.get("start_local") or ""):
@@ -231,6 +250,7 @@ def series(workouts: list[dict[str, Any]], metric: str) -> dict[str, Any]:
                 "date": day.isoformat(),
                 "track_id": workout.get("track_id"),
                 "sport": workout.get("sport"),
+                "sport_family": workout.get("sport_family"),
                 "value": value,
             }
         )
@@ -240,13 +260,18 @@ def series(workouts: list[dict[str, Any]], metric: str) -> dict[str, Any]:
         "lower_is_better": lower_better,
         "values": rows,
     }
-    trend = linear_trend([(dt.date.fromisoformat(r["date"]), r["value"]) for r in rows])
-    if trend:
-        out["trend"] = trend
-    if rows:
-        best = (min if lower_better else max)(rows, key=lambda r: r["value"])
-        out["best"] = best
-        out["mean"] = round(statistics.fmean(r["value"] for r in rows), 2)
+    families = {r["sport_family"] for r in rows}
+    if len(families) <= 1:
+        out.update(_summarise_series(rows, lower_better))
+    else:
+        out["by_family"] = {
+            str(family): _summarise_series(
+                [r for r in rows if r["sport_family"] == family], lower_better)
+            for family in sorted(families, key=str)
+        }
+        out["note"] = ("Several sport families are present, so best, mean "
+                       "and trend are given per family only. Filter by sport "
+                       "for a single series.")
     return out
 
 

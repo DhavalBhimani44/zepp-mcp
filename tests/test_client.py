@@ -82,9 +82,32 @@ def test_ranges_reaching_today_expire_quickly():
     today = dt.date.today().isoformat()
     assert api._cache_ttl({"to_date": today}) == api._CACHE_TTL_CURRENT
     assert api._cache_ttl({}) == api._CACHE_TTL_CURRENT
-    assert api._cache_ttl({"to_date": "2020-01-01"}) == float("inf")
+    assert api._cache_ttl({"to_date": "2020-01-01"}) == api._CACHE_TTL_PAST
     ms = str(int(dt.datetime(2020, 1, 2, tzinfo=dt.UTC).timestamp() * 1000))
-    assert api._cache_ttl({"to": ms}) == float("inf")
+    assert api._cache_ttl({"to": ms}) == api._CACHE_TTL_PAST
+
+
+def test_nothing_is_cached_forever():
+    """A watch that syncs late fills in past days, so even old ranges expire."""
+    assert api._cache_ttl({"to_date": "2020-01-01"}) < float("inf")
+    recent = (dt.date.today() - dt.timedelta(days=3)).isoformat()
+    assert api._cache_ttl({"to_date": recent}) == api._CACHE_TTL_CURRENT
+
+
+def test_empty_answers_are_only_cached_briefly():
+    """no_data may be absence, a silent rejection or an unsynced day."""
+    old_range = {"to_date": "2020-01-01"}
+    assert api._cache_ttl(old_range, "no_data") == api._CACHE_TTL_CURRENT
+
+
+def test_pacing_sleep_does_not_hold_the_cache_lock(monkeypatch):
+    c = make_client(lambda r: httpx.Response(200, json={"items": [1]}), cache=False)
+    c._min_interval = 10.0
+    held = []
+    monkeypatch.setattr(api.time, "sleep", lambda s: held.append(c._lock.locked()))
+    c.get("/a")
+    c.get("/b")
+    assert held == [False]
 
 
 def test_pacing_waits_between_requests(monkeypatch):
@@ -223,7 +246,49 @@ def test_events_walk_every_page_by_advancing_from():
     )
     assert got.status == "ok"
     assert len(got.items) == 45 and got.requests == 3
-    assert int(seen[1]["from"]) == items[19]["timestamp"] + 1
+    # Inclusive: the next page starts AT the last timestamp seen.
+    assert int(seen[1]["from"]) == items[19]["timestamp"]
+
+
+def test_items_sharing_a_timestamp_across_a_page_boundary_are_kept():
+    """Three items at one timestamp, split 2/1 by a page of 4: stepping past
+    the last timestamp would have dropped the third."""
+    items = [{"eventType": "e", "timestamp": t, "n": n}
+             for n, t in enumerate([1, 2, 5, 5, 5, 9])]
+
+    def handler(request):
+        lo = int(request.url.params["from"])
+        limit = int(request.url.params["limit"])
+        return httpx.Response(200, json={"items": [
+            i for i in items if i["timestamp"] >= lo][:limit]})
+
+    got = api._walk_events(make_client(handler), "/p", {}, 0, 10**13, limit=4)
+    assert sorted(i["n"] for i in got.items) == list(range(6))
+
+
+def test_pai_reuploads_with_the_same_timestamp_both_survive():
+    """PAI re-states a day under the same timestamp; the later upload must
+    reach the decoder, which keeps the latest."""
+    first = {"eventType": "PaiHealthInfo", "timestamp": 100, "time": "100",
+             "uploadTimestamp": "1", "dailyPai": "3", "totalPai": "3"}
+    second = {**first, "uploadTimestamp": "2", "dailyPai": "9", "totalPai": "9"}
+    handler = lambda r: httpx.Response(200, json={"items": [first, second]})  # noqa: E731
+    got = api._walk_events(make_client(handler), "/p", {}, 0, 10**13, limit=20)
+    assert len(got.items) == 2
+    from zepp_mcp import events
+    assert events.pai({"items": got.items})[0]["pai_earned_today"] == 9.0
+
+
+def test_a_full_page_of_one_timestamp_steps_past_it_and_says_so():
+    items = [{"eventType": "e", "timestamp": 5, "n": n} for n in range(6)]
+
+    def handler(request):
+        lo = int(request.url.params["from"])
+        return httpx.Response(200, json={"items": [
+            i for i in items if i["timestamp"] >= lo][:4]})
+
+    got = api._walk_events(make_client(handler), "/p", {}, 0, 10**13, limit=4)
+    assert got.requests == 3 and got.notes
 
 
 def test_events_dedupe_when_server_treats_from_inclusively():
@@ -243,7 +308,8 @@ def test_events_page_cap_marks_partial(monkeypatch):
     monkeypatch.setattr(api, "MAX_PAGES", 2)
     handler, _ = _event_server(100)
     got = api._walk_events(make_client(handler), "/p", {}, 0, 10**13, limit=20)
-    assert got.status == "partial" and len(got.items) == 40
+    # Two pages of 20 overlapping by the one item at the boundary timestamp.
+    assert got.status == "partial" and len(got.items) == 39
     assert got.notes
 
 

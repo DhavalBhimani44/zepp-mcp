@@ -170,13 +170,24 @@ def _range_end(params: dict[str, Any]) -> dt.date | None:
     return None
 
 
-def _cache_ttl(params: dict[str, Any]) -> float:
-    end = _range_end(params)
-    # A day either side of "today" because the range end is a UTC date and
-    # the watch's local day can be ahead or behind it.
-    if end is None or end >= dt.date.today() - dt.timedelta(days=1):
+# Past days are NOT immutable: a watch that has not synced for days uploads
+# them late, and a day reported empty at noon can be full by evening. So
+# nothing is cached forever. Ranges ending within the last week -- the
+# window a late sync realistically fills -- get the short TTL; older ones
+# an hour, which still spares a conversation from refetching.
+_CACHE_TTL_PAST = 3600.0
+_LATE_SYNC_DAYS = 7
+
+
+def _cache_ttl(params: dict[str, Any], status: str = "ok") -> float:
+    # An empty answer is never held long: it may be absence, a silently
+    # rejected request, or a day that has simply not synced yet.
+    if status != "ok":
         return _CACHE_TTL_CURRENT
-    return float("inf")
+    end = _range_end(params)
+    if end is None or end >= dt.date.today() - dt.timedelta(days=_LATE_SYNC_DAYS):
+        return _CACHE_TTL_CURRENT
+    return _CACHE_TTL_PAST
 
 
 class ZeppClient:
@@ -195,8 +206,11 @@ class ZeppClient:
         # than trusted to every caller.
         self._min_interval = (min_interval if min_interval is not None
                               else _env_float("ZEPP_MIN_REQUEST_INTERVAL", 0.35))
-        self._last_request = 0.0
+        self._next_slot = 0.0
         self._lock = threading.Lock()
+        # Separate from the cache lock: a request waiting for its pacing
+        # slot must not block cache hits in other tool calls.
+        self._pace_lock = threading.Lock()
         enabled = cache if cache is not None else (
             os.environ.get("ZEPP_RESPONSE_CACHE", "").lower()
             not in ("0", "off", "none"))
@@ -244,7 +258,7 @@ class ZeppClient:
 
         # Errors are never cached: a transient 500 must not stick.
         if outcome.status in ("ok", "no_data"):
-            self._cache_put(key, outcome, _cache_ttl(params))
+            self._cache_put(key, outcome, _cache_ttl(params, outcome.status))
         return outcome
 
     def _cache_get(self, key: tuple[Any, ...]) -> Outcome | None:
@@ -278,11 +292,15 @@ class ZeppClient:
     def _pace(self) -> None:
         if self._min_interval <= 0:
             return
-        with self._lock:
-            wait = self._last_request + self._min_interval - time.monotonic()
-            if wait > 0:
-                time.sleep(wait)
-            self._last_request = time.monotonic()
+        # Reserve the next slot under the lock, sleep outside it, so
+        # concurrent callers queue at the right spacing without holding a
+        # lock across the sleep.
+        with self._pace_lock:
+            now = time.monotonic()
+            slot = max(now, self._next_slot)
+            self._next_slot = slot + self._min_interval
+        if slot > now:
+            time.sleep(slot - now)
 
     def _request(self, credential: Credential, path: str,
                  params: dict[str, Any] | None) -> Outcome:
@@ -395,18 +413,23 @@ def _day_bounds_ms(from_date: str, to_date: str) -> tuple[int, int]:
 
 def _walk_events(client: ZeppClient, path: str, base: dict[str, Any],
                  from_ms: int, to_ms: int, limit: int) -> Collected:
-    """Page through an events route by advancing `from` past the last item.
+    """Page through an events route by moving `from` up to the last item.
 
     Neither events family documents a cursor. Items come back in ascending
     timestamp order capped at `limit` (a 30-day Body Charge request returned
-    exactly 20 days, oldest first), so a full page means "there may be more"
-    and the next request starts one millisecond after the last item seen.
-    Items are de-duplicated on (eventType, subType, timestamp) in case the
-    server treats `from` as inclusive.
+    exactly 20 days, oldest first), so a full page means "there may be more".
+
+    The next page starts AT the last timestamp seen, not one past it: several
+    items can share a timestamp (PAI re-uploads a day under the same day
+    stamp), and starting past it would skip the ones that fell onto the next
+    page. The overlap is removed by exact-item de-duplication. Only a full
+    page that is entirely one timestamp forces a step past it, and that is
+    reported.
     """
     from . import events as ev
 
     collected = Collected(status="no_data")
+    seen: set[str] = set()
     cursor = from_ms
     while collected.requests < MAX_PAGES:
         outcome = client.get(path, {**base, "from": str(cursor), "to": str(to_ms),
@@ -423,18 +446,27 @@ def _walk_events(client: ZeppClient, path: str, base: dict[str, Any],
         page = ev._items(outcome.data)
         if not page:
             break
-        collected.items.extend(page)
+        for item in page:
+            key = ev.item_key(item)
+            if key not in seen:
+                seen.add(key)
+                collected.items.append(item)
         stamps = [ev._number(i.get("timestamp")) for i in page]
         last = max((t for t in stamps if t is not None), default=None)
-        if len(page) < limit or last is None or last + 1 <= cursor:
+        if len(page) < limit or last is None:
             break
-        cursor = int(last) + 1
+        if last > cursor:
+            cursor = int(last)
+        else:
+            collected.notes.append(
+                f"More than {limit} records share one timestamp; any beyond "
+                "the first page of them were not returned.")
+            cursor = int(last) + 1
     else:
         collected.notes.append(
             f"Stopped after {MAX_PAGES} pages; narrow the date range for the rest.")
         collected.status = "partial"
 
-    collected.items = ev.dedupe(collected.items)
     if collected.status != "partial":
         collected.status = "ok" if collected.items else "no_data"
     return collected

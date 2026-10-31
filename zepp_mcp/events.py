@@ -174,12 +174,22 @@ def daily_rollup(
     ]
 
 
+def item_key(item: dict[str, Any]) -> str:
+    """Identity of an event item for de-duplication across overlapping pages.
+
+    The whole item, not (type, timestamp): PAI re-uploads the same day under
+    the same timestamp with a later uploadTimestamp, and a timestamp-only key
+    kept the first upload and threw away the one that should win.
+    """
+    return json.dumps(item, sort_keys=True, default=str)
+
+
 def dedupe(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Drop repeated items across overlapping pages, keeping order."""
-    seen: set[tuple[Any, ...]] = set()
+    """Drop exact repeats across overlapping pages, keeping order."""
+    seen: set[str] = set()
     out: list[dict[str, Any]] = []
     for item in items:
-        key = (item.get("eventType"), item.get("subType"), item.get("timestamp"))
+        key = item_key(item)
         if key in seen:
             continue
         seen.add(key)
