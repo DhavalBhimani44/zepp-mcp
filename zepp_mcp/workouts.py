@@ -14,12 +14,11 @@ import datetime as dt
 import json
 from typing import Any
 
-from . import decode, events
+from . import decode, events, sports
 from .codes import (
     TRAINING_EFFECT_SCALE,
     clean,
     sport_confidence,
-    sport_name,
     training_effect_band,
 )
 
@@ -115,15 +114,10 @@ SPORT_FIELDS: dict[str, tuple[str, ...]] = {
     "free_training": (),
 }
 
-# Which sport-specific block applies to which numeric type code.
-_BLOCK_FOR_CODE: dict[int, str] = {
-    1: "foot", 8: "foot", 9: "ride", 14: "swim", 16: "free_training",
-    18: "field_sport", 21: "rope_skipping", 22: "hike", 52: "strength",
-    # Corroborated codes (codes.CORROBORATED_SPORT_CODES): on-foot and ride
-    # blocks only, since those field sets are sport-agnostic sentinelled
-    # fields; anything else stays unclassified rather than guessed.
-    6: "foot", 7: "foot", 10: "ride",
-}
+# Which sport-specific block applies to which numeric type code lives in
+# sports.py: each code's family picks its block (running/walking -> foot,
+# cycling -> ride, team and racket sports -> field_sport, ...). The nine
+# confirmed codes map exactly as they always have.
 
 # Running biomechanics, nested under foot["running_dynamics"] rather than
 # flattened into the foot tuple. Ground contact time and vertical
@@ -491,6 +485,11 @@ def _sets(row: dict[str, Any]) -> dict[str, Any] | None:
     13 in the corpus) -- both numbers are reported, neither is reconciled.
     Exercise codes are the watch's own; no name table has been verified.
     """
+    # Runs and swims carry a stale group list with total_group -1; a real
+    # strength or skipping session has a positive set count.
+    groups = _numeric(row.get("total_group"))
+    if groups is None or groups <= 0:
+        return None
     raw = row.get("strength_training_group")
     if isinstance(raw, str):
         try:
@@ -571,9 +570,10 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
     out: dict[str, Any] = {
         "track_id": str(row.get("trackid", "")),
         "source": row.get("source"),
-        "sport": sport_name(code),
+        "sport": sports.name(code),
         "sport_code": code,
         "sport_name_confidence": sport_confidence(code),
+        "sport_family": sports.family(code),
         "start_local": _iso(row.get("trackid"), zone),
         "end_local": _iso(row.get("end_time"), zone),
         "timezone": row.get("syncedTimezone") or "UTC",
@@ -587,17 +587,19 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
     distance = _distance_metres(row)
     if distance is not None:
         out["summary"]["distance_metres"] = distance
-    code_value = _numeric(code)
+    block = sports.metric_block(code)
     derived = _derived_pace(distance, timing.get("moving_time_seconds"),
-                            swim=_BLOCK_FOR_CODE.get(int(code_value or -1)) == "swim")
+                            swim=block == "swim")
     if derived:
         out["derived"] = derived
 
-    code_number = _numeric(code)
-    block = _BLOCK_FOR_CODE.get(int(code_number) if code_number is not None else -1)
-    if block:
-        detail = _collect(row, SPORT_FIELDS[block])
-        if detail:
+    sport = sports.lookup(code)
+    if sport is not None and sport.confidence == "contested":
+        out["sport_candidates"] = list(sport.candidates)
+
+    if block or (sport is not None and sport.confidence != "contested"):
+        detail = _collect(row, SPORT_FIELDS[block]) if block else {}
+        if detail and block:
             out[block] = detail
         if block in ("strength", "rope_skipping"):
             sets = _sets(row)
@@ -614,6 +616,19 @@ def normalise(row: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
             plan = _training_plan_block(row)
             if plan:
                 out["training_plan"] = plan
+        # A name from anything short of confirmation picks the block from
+        # its family, which is a classification, not an observation. So
+        # whatever else the row populated is kept, under its own block name,
+        # rather than hidden behind the guess.
+        if sport is None or sport.confidence != "confirmed":
+            for name, fields in SPORT_FIELDS.items():
+                if name == block:
+                    continue
+                extra = _collect(row, fields)
+                extra = {k: v for k, v in extra.items()
+                         if k not in out.get(block or "", {})}
+                if extra:
+                    out.setdefault("other_metrics", {})[name] = extra
     else:
         # Unnamed sport: show every sport block that has non-sentinel values,
         # so nothing is hidden just because the code is unrecognised.

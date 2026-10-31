@@ -273,6 +273,7 @@ def test_aggregate_pace_is_not_the_mean_of_paces():
     def workout(distance, seconds):
         return {
             "sport": "outdoor_running",
+            "sport_family": "running",
             "start_local": "2026-08-01T07:00:00",
             "summary": {"distance_metres": distance, "moving_time_seconds": seconds},
         }

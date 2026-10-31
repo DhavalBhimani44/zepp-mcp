@@ -280,3 +280,24 @@ def test_describe_schema_lists_catalogue():
     names = {m["name"] for m in out["metrics"]}
     assert {"hrv_rmssd_ms", "readiness_score", "strength_sets"} <= names
     assert out["verification_levels"]["2"].startswith("fixture verified")
+
+
+def test_sport_family_filter_and_confidence_reporting():
+    out = server.zepp_list_workouts(sport="swimming", **RANGE)
+    assert out["total"] == 2
+    seen = out["sports_seen"]
+    assert seen == [{"code": 14, "sport": "pool_swimming", "family": "swimming",
+                     "confidence": "confirmed", "workouts": 2}]
+
+
+def test_workout_stats_by_family():
+    out = server.zepp_workout_stats(group_by="sport_family", **RANGE)
+    families = {g["group"] for g in out["by_sport_family"]}
+    assert {"swimming", "strength", "hiking", "walking", "running"} <= families
+    assert "by_period" not in out
+
+
+def test_describe_schema_lists_every_sport_code():
+    codes = server.zepp_describe_schema()["sport_codes"]
+    assert len(codes["codes"]) >= 140
+    assert codes["count_by_confidence"]["confirmed"] == 9

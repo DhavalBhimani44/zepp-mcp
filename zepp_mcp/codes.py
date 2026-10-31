@@ -88,46 +88,19 @@ SPORT_CODES: dict[int, str] = {
 }
 
 
-# Codes NOT observed on this project's account, named from independent
-# open-source Zepp cloud clients (docs/capability-matrix.md, "Sport codes").
-# Each has at least two sources reading the CLOUD history `type` field -- not
-# the watch's Bluetooth enum, which numbers low codes differently -- and none
-# conflicts with a code confirmed above. They are reported with
-# sport_name_confidence "corroborated" so a caller can tell them apart.
-#
-# Deliberately absent: 8 and 9. External tables call cloud 8 "treadmill"
-# and 9 is "elliptical" in the device enum; on this account 8 is an
-# outdoor walk with a GPS split track and 9 a ride with ride_-prefixed pb
-# keys, so the confirmed names stand and the conflict is documented.
-CORROBORATED_SPORT_CODES: dict[int, str] = {
-    6: "walking",
-    7: "trail_running",
-    10: "indoor_cycling",
-    23: "rowing_machine",
-    60: "yoga",
-    92: "badminton",
-}
+# Every other code -- corroborated, reported, catalogued, contested or
+# user-supplied -- lives in sports.py with its evidence. SPORT_CODES above
+# stays the confirmed subset, so its meaning does not drift.
 
 
 def sport_confidence(code: object) -> str:
-    try:
-        number = int(code)  # type: ignore[call-overload]
-    except (TypeError, ValueError):
-        return "unknown"
-    if number in SPORT_CODES:
-        return "confirmed"
-    if number in CORROBORATED_SPORT_CODES:
-        return "corroborated"
-    return "unknown"
+    from . import sports
+    return sports.confidence(code)
 
 
 def sport_name(code: object) -> str:
-    try:
-        number = int(code)  # type: ignore[call-overload]
-    except (TypeError, ValueError):
-        return f"unknown_sport_{code}"
-    return SPORT_CODES.get(number) or CORROBORATED_SPORT_CODES.get(
-        number, f"unknown_sport_{code}")
+    from . import sports
+    return sports.name(code)
 
 
 # Sentinels. Zepp does not use a single not-applicable marker; it uses a

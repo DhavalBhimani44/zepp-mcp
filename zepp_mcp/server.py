@@ -14,10 +14,9 @@ from typing import Any, Literal
 
 from mcp.server import MCPServer
 
-from . import analysis, body, decode, events, metrics, workouts
+from . import analysis, body, decode, events, metrics, sports, workouts
 from . import client as api
 from .auth import describe_expiry
-from .codes import SPORT_CODES
 
 _ROOT = Path(__file__).resolve().parent.parent
 api.load_dotenv(_ROOT / ".env")
@@ -361,16 +360,29 @@ def zepp_sleep(
     return result
 
 
+def _sports_seen(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Each sport code in a result, with how sure its name is -- so a
+    catalogued or contested name is visibly not a confirmed one."""
+    seen: dict[str, dict[str, Any]] = {}
+    for item in items:
+        code = str(item.get("sport_code"))
+        entry = seen.setdefault(code, {
+            "code": item.get("sport_code"), "sport": item.get("sport"),
+            "family": item.get("sport_family"),
+            "confidence": item.get("sport_name_confidence"), "workouts": 0,
+        })
+        entry["workouts"] += 1
+        if item.get("sport_candidates"):
+            entry["candidates"] = item["sport_candidates"]
+    return sorted(seen.values(), key=lambda e: -e["workouts"])
+
+
 def _workouts(client: api.ZeppClient, start: str, end: str,
               sport: str | None = None) -> tuple[list[dict[str, Any]], api.Collected]:
     collected = api.workout_history_all(client, start, end)
     items = [workouts.normalise(r) for r in collected.items]
     if sport:
-        wanted = sport.strip().lower()
-        if wanted.isdigit():
-            items = [i for i in items if str(i.get("sport_code")) == wanted]
-        else:
-            items = [i for i in items if wanted in i["sport"].lower()]
+        items = [i for i in items if sports.matches(i, sport)]
     items.sort(key=lambda i: i.get("start_local") or "", reverse=True)
     return items, collected
 
@@ -390,8 +402,14 @@ def zepp_list_workouts(
     offset: int = 0,
 ) -> dict[str, Any]:
     """Args: from_date/to_date as YYYY-MM-DD (default last 90 days); sport
-    as a name fragment ("swim", "running", "strength") or a numeric sport
-    code; limit/offset page through the result (newest first)."""
+    as a name fragment ("swim", "badminton"), a sport family ("cycling",
+    "team_sport", "racket_sport" -- see zepp_describe_schema) or a numeric
+    sport code; limit/offset page through the result (newest first).
+
+    Every workout carries sport_name_confidence. Only "confirmed" names are
+    verified on real data; "catalogued" names come from the watch's sport
+    list and "contested" codes stay unknown_sport_<code> with candidates.
+    Say which when it matters."""
     try:
         start, end = _range(from_date, to_date, days=90)
         items, collected = _workouts(_get_client(), start, end, sport)
@@ -412,6 +430,7 @@ def zepp_list_workouts(
         "total": len(items), "offset": offset, "returned": len(page),
         "workouts": page,
         "sports_present": sorted({i["sport"] for i in items}),
+        "sports_seen": _sports_seen(items),
     }
     if offset + limit < len(items):
         result["next_offset"] = offset + limit
@@ -878,7 +897,8 @@ def zepp_workout_stats(
     from_date: str | None = None,
     to_date: str | None = None,
     sport: str | None = None,
-    group_by: Literal["week", "month", "year", "sport", "none"] = "month",
+    group_by: Literal["week", "month", "year", "sport", "sport_family",
+                      "none"] = "month",
     metric: Literal[
         "distance", "moving_time", "pace", "swim_pace", "avg_heart_rate",
         "max_heart_rate", "cadence", "exercise_load", "aerobic_training_effect",
@@ -912,9 +932,11 @@ def zepp_workout_stats(
         "sport_filter": sport,
         "overall": analysis.totals(items),
         "by_sport": analysis.grouped(items, "sport"),
+        "by_sport_family": analysis.grouped(items, "sport_family"),
         "records": analysis.records(items),
+        "sports_seen": _sports_seen(items),
     }
-    if group_by not in ("none", "sport"):
+    if group_by not in ("none", "sport", "sport_family"):
         result["by_period"] = {"group_by": group_by,
                                "periods": analysis.grouped(items, group_by)}
     if metric:
@@ -1068,18 +1090,7 @@ def zepp_profile(include_devices: bool = True) -> dict[str, Any]:
 )
 def zepp_describe_schema() -> dict[str, Any]:
     return {
-        "sport_codes": {
-            "identified": SPORT_CODES,
-            "note": "Every sport code seen on this account is identified. "
-                    "Codes absent from this map are reported as "
-                    "unknown_sport_<code>: they are real activities, only "
-                    "the name is unknown. Most codes are confirmed against "
-                    "the Zepp app directly or against a sport-prefixed "
-                    "payload field (e.g. code 9's ride_-prefixed pb keys, "
-                    "code 21's rope_skipping_-prefixed ones) -- code 16 "
-                    "(free_training) has neither and was named by "
-                    "elimination instead, see known_gaps.",
-        },
+        "sport_codes": sports.describe(),
         "stream_units": {
             name: {"unit": spec.unit, "encoding": spec.encoding,
                    "verified": spec.verified}

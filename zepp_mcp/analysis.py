@@ -20,16 +20,16 @@ import statistics
 from collections.abc import Callable
 from typing import Any
 
-# Sports where distance is the point and pace is meaningful.
-DISTANCE_SPORTS = frozenset(
-    {
-        "outdoor_running",
-        "walking",
-        "outdoor_cycling",
-        "pool_swimming",
-        "hiking",
-    }
-)
+from .sports import DISTANCE_FAMILIES
+
+
+def _family(workout: dict[str, Any]) -> str | None:
+    return workout.get("sport_family")
+
+
+def _paced(workout: dict[str, Any]) -> bool:
+    """Pace means something for this workout's sport family."""
+    return _family(workout) in DISTANCE_FAMILIES
 
 
 def _get(workout: dict[str, Any], path: str) -> Any:
@@ -118,15 +118,17 @@ def totals(workouts: list[dict[str, Any]]) -> dict[str, Any]:
     paced = [
         w
         for w in workouts
-        if w.get("sport") in DISTANCE_SPORTS
+        if _paced(w)
         and _num(_get(w, "summary.distance_metres"))
         and _num(_get(w, "summary.moving_time_seconds"))
     ]
-    sports = {w["sport"] for w in paced}
-    if paced and len(sports) == 1:
+    # One family only: running and trail running share a pace, a run and a
+    # swim do not.
+    families = {_family(w) for w in paced}
+    if paced and len(families) == 1:
         d = sum(_num(_get(w, "summary.distance_metres")) or 0 for w in paced)
         t = sum(_num(_get(w, "summary.moving_time_seconds")) or 0 for w in paced)
-        if next(iter(sports)) == "pool_swimming":
+        if next(iter(families)) == "swimming":
             per = t / d * 100
             out["avg_pace"] = f"{int(per) // 60}:{int(per) % 60:02d}/100m"
             out["avg_pace_sec_per_100m"] = round(per, 1)
@@ -144,6 +146,8 @@ def grouped(workouts: list[dict[str, Any]], group_by: str) -> list[dict[str, Any
     for workout in workouts:
         if group_by == "sport":
             key = workout.get("sport") or "unknown"
+        elif group_by == "sport_family":
+            key = _family(workout) or "unknown"
         else:
             day = _date(workout)
             if day is None:
@@ -153,7 +157,7 @@ def grouped(workouts: list[dict[str, Any]], group_by: str) -> list[dict[str, Any
     out = []
     for key in sorted(buckets):
         entry = {"group": key, **totals(buckets[key])}
-        if group_by != "sport":
+        if group_by not in ("sport", "sport_family"):
             entry["by_sport"] = {
                 sport: len([w for w in buckets[key] if w.get("sport") == sport])
                 for sport in sorted({w.get("sport") for w in buckets[key]})
@@ -291,10 +295,10 @@ def records(workouts: list[dict[str, Any]]) -> dict[str, Any]:
             found = _record(subset, path, cmp)
             if found:
                 entry[name] = found
-        if sport in DISTANCE_SPORTS:
+        if _paced(subset[0]):
             # Fastest pace only counts sessions of at least 1 km (100 m for a
             # swim), so a 200 m warm-up jog does not become the "record".
-            swim = sport == "pool_swimming"
+            swim = _family(subset[0]) == "swimming"
             path = "derived.pace_sec_per_100m" if swim else "derived.pace_sec_per_km"
             floor = 100 if swim else 1000
             found = _record(

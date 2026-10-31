@@ -572,6 +572,20 @@ CATALOGUE: tuple[Metric, ...] = (
         kind="derived",
         frequency="per period",
     ),
+    Metric(
+        "sport_codes",
+        "workout",
+        "name per code",
+        _HIST,
+        "type",
+        "zepp_list_workouts",
+        2,
+        frequency="per workout",
+        evidence="9 confirmed here; the rest ranked corroborated / reported / "
+        "catalogued / contested in sports.py",
+        limitations="catalogued names rest on the cloud-code == watch-id rule "
+        "(verified 3/3 here for codes >= 18), not on cloud captures",
+    ),
     # -- discovered, not exposed -------------------------------------------
     Metric(
         "second_heart_rate_files",
